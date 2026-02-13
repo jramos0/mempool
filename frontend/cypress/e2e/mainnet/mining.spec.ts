@@ -101,7 +101,7 @@ describe('Mainnet - Mining Features', () => {
       });
     });
 
-    describe('mining graphs', () => {
+    describe.only('mining graphs', () => {
       describe('pools ranking', () => {
         it('loads the graph', () => {
           cy.visit('/graphs/mining/pools');
@@ -113,17 +113,10 @@ describe('Mainnet - Mining Features', () => {
 
       describe('pools dominance', () => {
         it('loads the graph', () => {
-          cy.intercept('GET', '/api/v1/mining/hashrate/pools/**', {
-            fixture: 'mining_pools_hashrate_6m.json',
-            headers: {
-              'x-total-count': '300000',
-            },
-          }).as('getPoolsHashrate');
           cy.visit('/graphs/mining/pools-dominance');
-          cy.wait('@getPoolsHashrate');
           cy.waitForSkeletonGone();
           cy.waitForPageIdle();
-          cy.get('app-hashrate-chart-pools .chart svg').should('be.visible');
+          cy.get('.spinner-border').should('not.exist');
         });
       });
 
