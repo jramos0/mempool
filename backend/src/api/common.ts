@@ -1031,11 +1031,13 @@ export class Common {
 
   static calcEffectiveFeeStatistics(transactions: { weight: number, fee?: number, effectiveFeePerVsize?: number, txid: string, acceleration?: boolean, vin?: Array<{ is_coinbase: boolean }> }[]): EffectiveFeeStats {
     // Filter out coinbase transaction
-    // Coinbase can be identified by: vin[0].is_coinbase flag || Position at index 0 + fee of 0  
+    // Coinbase can be identified by: vin[0].is_coinbase flag || Position at index 0 + fee of 0
     const nonCoinbaseTransactions = transactions.filter((tx, index) => {
-      // Method 1: Check via is_coinbase flag if available 
-      if (tx.vin && tx.vin.length > 0 && tx.vin[0].is_coinbase !== undefined) {
-        return !tx.vin[0].is_coinbase;
+      // Method 1: Check via is_coinbase flag if available.
+      // Default to "not coinbase" when vin data is missing/partial.
+      const isCoinbaseByVin = tx.vin?.[0]?.is_coinbase;
+      if (typeof isCoinbaseByVin === 'boolean') {
+        return !isCoinbaseByVin;
       }
       // Coinbase is always at index 0 AND has 0 fee
       if (index === 0 && (tx.fee === 0 || tx.fee === undefined)) {

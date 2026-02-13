@@ -151,6 +151,11 @@ class MiningRoutes {
   private async $getPoolsHistoricalHashrate(req: Request, res: Response) {
     try {
       const hashrates = await HashratesRepository.$getPoolsWeeklyHashrate(req.params.interval);
+      if (hashrates.length === 0) {
+        logger.warn(`Pools historical hashrate is empty for interval="${req.params.interval}"`, logger.tags.mining);
+      } else {
+        logger.debug(`Pools historical hashrate returned ${hashrates.length} rows for interval="${req.params.interval}"`, logger.tags.mining);
+      }
       const blockCount = await BlocksRepository.$blockCount(null, null);
       res.header('Pragma', 'public');
       res.header('Cache-control', 'public');
@@ -158,6 +163,7 @@ class MiningRoutes {
       res.setHeader('Expires', new Date(Date.now() + 1000 * 300).toUTCString());
       res.json(hashrates);
     } catch (e) {
+      logger.err(`Failed to get pools historical hashrate for interval="${req.params.interval}". Reason: ${e instanceof Error ? e.message : e}`, logger.tags.mining);
       handleError(req, res, 500, 'Failed to get pools historical hashrate');
     }
   }
