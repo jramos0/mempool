@@ -1030,27 +1030,15 @@ export class Common {
   }
 
   static calcEffectiveFeeStatistics(transactions: { weight: number, fee?: number, effectiveFeePerVsize?: number, txid: string, acceleration?: boolean, vin?: Array<{ is_coinbase: boolean }> }[]): EffectiveFeeStats {
-    // Filter out coinbase transaction
-    // Coinbase can be identified by: vin[0].is_coinbase flag || Position at index 0 + fee of 0  
-    const nonCoinbaseTransactions = transactions.filter((tx, index) => {
-      // Method 1: Check via is_coinbase flag if available 
-      if (tx.vin && tx.vin.length > 0 && tx.vin[0].is_coinbase !== undefined) {
-        return !tx.vin[0].is_coinbase;
-      }
-      // Coinbase is always at index 0 AND has 0 fee
-      if (index === 0 && (tx.fee === 0 || tx.fee === undefined)) {
-        return false; // Exclude it
-      }
-      return true; // Include all others
-    });
-
-    // return safe default values to prevent NaN/undefined errors in empty array (e.g., block with only coinbase)
-    if (nonCoinbaseTransactions.length === 0) {
+    // return early with safe default values
+    if (transactions.length <= 1) {
       return {
         medianFee: 0,
         feeRange: [0, 0, 0, 0, 0, 0, 0],
       };
     }
+    // assume the first transaction is a coinbase if the fee is falsy (0 or undefined)
+    const nonCoinbaseTransactions = transactions[0].fee ? transactions : transactions.slice(1);
 
     const sortedTxs = nonCoinbaseTransactions.map(tx => { return { txid: tx.txid, weight: tx.weight, rate: tx.effectiveFeePerVsize || ((tx.fee || 0) / (tx.weight / 4)) }; }).sort((a, b) => a.rate - b.rate);
     const totalWeight = nonCoinbaseTransactions.reduce((acc, tx) => acc + tx.weight, 0);
