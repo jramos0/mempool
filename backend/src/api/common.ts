@@ -1070,7 +1070,7 @@ export class Common {
     // b) the minimum effective fee rate in the last 2% of transactions (in block order)
     const minFee = Math.min(
       Common.getNthPercentile(1, sortedTxs).rate,
-      nonCoinbaseTransactions.slice(-nonCoinbaseTransactions.length / 50).reduce((min, tx) => { return Math.min(min, tx.effectiveFeePerVsize || ((tx.fee || 0) / (tx.weight / 4))); }, Infinity)
+      nonCoinbaseTransactions.slice(Math.ceil(nonCoinbaseTransactions.length * 49 / 50)).reduce((min, tx) => { return Math.min(min, tx.effectiveFeePerVsize || ((tx.fee || 0) / (tx.weight / 4))); }, Infinity)
     );
 
     // maximum effective fee heuristic:
