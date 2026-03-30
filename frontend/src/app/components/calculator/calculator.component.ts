@@ -1,9 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Inject, LOCALE_ID, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { combineLatest, Observable } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { BehaviorSubject, combineLatest, Observable } from 'rxjs';
+import { distinctUntilChanged, map, shareReplay, switchMap } from 'rxjs/operators';
 import { StateService } from '@app/services/state.service';
+import { ApiService } from '@app/services/api.service';
+import { Price } from '@app/services/price.service';
 import { WebsocketService } from '@app/services/websocket.service';
+import { NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
 const MAX_BTC_SUPPLY = 21000000;
 const MAX_SATOSHI_SUPPLY = MAX_BTC_SUPPLY * 100_000_000;
@@ -16,20 +19,32 @@ const MAX_SATOSHI_SUPPLY = MAX_BTC_SUPPLY * 100_000_000;
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalculatorComponent implements OnInit {
+  dateModel: NgbDateStruct;
+  todayDateModel: NgbDateStruct;
+
   satoshis = 10000;
   form: FormGroup;
-  currentPrice = 0;
+  currentPrice: number | undefined = undefined;
   isMaxSupply = false;
+  currentCurrency = 'USD';
+  currencyDecimals = 2;
 
   currency$ = this.stateService.fiatCurrency$;
   price$: Observable<number>;
   lastFiatPrice$: Observable<number>;
+  timestamp$ = new BehaviorSubject<number>(new Date().getTime() / 1000);
 
   constructor(
+    @Inject(LOCALE_ID) private locale: string,
     private stateService: StateService,
     private formBuilder: FormBuilder,
     private websocketService: WebsocketService,
-  ) { }
+    private apiService: ApiService
+  ) {
+    const now = new Date();
+    this.todayDateModel = { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1, day: now.getUTCDate() };
+    this.dateModel = { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1, day: now.getUTCDate() };
+  }
 
   ngOnInit(): void {
     this.form = this.formBuilder.group({
@@ -43,15 +58,31 @@ export class CalculatorComponent implements OnInit {
         map((conversions) => conversions.time)
       );
 
-    let currency;
-    this.price$ = this.currency$.pipe(
-      switchMap((result) => {
-        currency = result;
-        return this.stateService.conversions$.asObservable();
+    this.price$ = combineLatest({
+      currency: this.currency$.pipe(distinctUntilChanged()),
+      timestamp: this.timestamp$.pipe(distinctUntilChanged())
+    }).pipe(
+      switchMap(({ currency, timestamp }) => {
+        this.currentCurrency = currency;
+        this.updateCurrencyDecimals();
+
+        return this.todaySelected
+          ? this.stateService.conversions$.asObservable()
+          : this.apiService.getHistoricalPrice$(timestamp, currency).pipe(
+            map((p: any) => {
+              const formatted: { time: number; [key: string]: number } = {
+                time: p.prices[0].time
+              };
+              formatted[this.currentCurrency] = Math.max(0, p.prices[0][this.currentCurrency]);
+              return formatted;
+            })
+          );
       }),
       map((conversions) => {
-        return conversions[currency];
-      })
+        return conversions[this.currentCurrency];
+      }),
+      // Share one latest price stream across all form subscriptions to avoid duplicate API calls.
+      shareReplay({ bufferSize: 1, refCount: true })
     );
 
     combineLatest([
@@ -132,8 +163,11 @@ export class CalculatorComponent implements OnInit {
     if (name === 'bitcoin' && this.countDecimals(sanitizedValue) > 8) {
       sanitizedValue = this.toFixedWithoutRounding(sanitizedValue, 8);
     }
-    if (name === 'fiat' && this.countDecimals(sanitizedValue) > 2) {
-      sanitizedValue = this.toFixedWithoutRounding(sanitizedValue, 2);
+    if (name === 'fiat') {
+      const decimals = this.getCurrencyDecimals();
+      if (this.countDecimals(sanitizedValue) > decimals) {
+        sanitizedValue = this.toFixedWithoutRounding(sanitizedValue, decimals);
+      }
     }
     if (sanitizedValue === '') {
       sanitizedValue = '0';
@@ -176,12 +210,20 @@ export class CalculatorComponent implements OnInit {
   }
 
   formatFiat(num: number): string | number {
+    // Get the number of decimal places for the current currency
+    const decimals = this.getCurrencyDecimals();
+
+    if (decimals === 0) {
+      return Math.round(num);
+    }
+
     if (Math.abs(num) >= 1000) {
-      // For values >= 1000: show 2 decimals, or 0 if whole number
+      // For values >= 1000: show currency-specific decimals, or 0 if whole number
       if (num % 1 === 0) {
         return Math.round(num);
       }
-      return (Math.round(num * 100) / 100).toFixed(2);
+      const factor = Math.pow(10, decimals);
+      return (Math.round(num * factor) / factor).toFixed(decimals);
     }
     if (num % 1 === 0) {
       return Math.round(num);
@@ -190,6 +232,41 @@ export class CalculatorComponent implements OnInit {
     if (Math.abs(num) < 1 && num !== 0) {
       return num.toFixed(8);
     }
-    return (Math.round(num * 100) / 100).toFixed(2);
+    const factor = Math.pow(10, decimals);
+    return (Math.round(num * factor) / factor).toFixed(decimals);
+  }
+
+  updatePrice(): void {
+    this.timestamp$.next(Date.UTC(this.dateModel.year, this.dateModel.month - 1, this.dateModel.day + 1) / 1000);
+  }
+
+  get todaySelected() {
+    return this.dateModel.day === this.todayDateModel.day && this.dateModel.month === this.todayDateModel.month && this.dateModel.year === this.todayDateModel.year;
+  }
+
+  private updateCurrencyDecimals(): void {
+    try {
+      const formatter = new Intl.NumberFormat(this.locale, {
+        style: 'currency',
+        currency: this.currentCurrency
+      });
+      this.currencyDecimals = formatter.resolvedOptions().maximumFractionDigits;
+    } catch {
+      this.currencyDecimals = 2; // Default to 2 decimal places
+    }
+  }
+
+  getCurrencyDecimals(): number {
+    return this.currencyDecimals;
+  }
+
+  get blockConversion(): Price | undefined {
+    if (this.todaySelected || this.currentPrice === undefined) {
+      return undefined;
+    }
+    return {
+      price: { [this.currentCurrency]: this.currentPrice } as any,
+      exchangeRates: {} as any,
+    };
   }
 }
