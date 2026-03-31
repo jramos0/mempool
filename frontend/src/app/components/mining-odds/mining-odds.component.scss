@@ -1,0 +1,103 @@
+.network-stats-bar {
+  background: var(--bg);
+  border: 1px solid var(--secondary);
+  border-radius: 8px;
+  padding: 16px 0;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.stat-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.mining-odds-form {
+  width: 100%;
+  max-width: 420px;
+
+  .form-label {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .unit-select {
+    max-width: 110px;
+    background-color: var(--bg);
+    border-color: var(--secondary);
+    color: inherit;
+  }
+}
+
+.stat-card {
+  background: var(--bg);
+  border: 1px solid var(--secondary);
+  border-radius: 8px;
+  padding: 20px 32px;
+  min-width: 200px;
+}
+
+.expected-time-value {
+  font-size: 24px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.accent-number {
+  color: #00ddff;
+}
+
+.odds-table {
+  width: 100%;
+  text-align: center; 
+  th {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom-color: var(--secondary);
+    vertical-align: middle;
+    color: #ffffff; 
+  }
+
+  td {
+    vertical-align: middle;
+    border-color: rgba(128, 128, 128, 0.15);
+    color: #ffffff; 
+
+  .period-cell {
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .odds-good {
+    color: #4caf50; 
+  }
+
+  .odds-fair {
+    color: #ff9800; 
+  }
+}
+}
+
+@media (max-width: 767.98px) {
+  .expected-time-value {
+    font-size: 22px;
+  }
+
+  .stat-value {
+    font-size: 16px;
+  }
+
+  .network-stats-bar {
+    padding: 12px 0;
+  }
+}

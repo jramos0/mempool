@@ -1,0 +1,107 @@
+<div class="container-xl">
+
+  <div class="text-center mb-4">
+    <h2 i18n="mining-odds.title">Solo Mining Odds</h2>
+    <p class="text-secondary" i18n="mining-odds.subtitle">
+      Estimate your solo mining probability of finding a block based on your hashrate.
+    </p>
+  </div>
+
+  <ng-container *ngIf="(networkStats$ | async) as network; else loading">
+
+    <!-- Network stats bar -->
+    <div class="network-stats-bar row justify-content-center mb-4">
+      <div class="col-auto text-center px-3">
+        <div class="stat-label" i18n="mining-odds.network-hashrate">Network Hashrate</div>
+        <div class="stat-value">{{ formatHashrate(network.hashrate) }}</div>
+      </div>
+      <div class="col-auto text-center px-3">
+        <div class="stat-label" i18n="mining-odds.avg-block-time">Avg Block Time</div>
+        <div class="stat-value">{{ (network.timeAvg / 1000 / 60) | number:'1.1-1' }} min</div>
+      </div>
+    </div>
+
+    <!-- Hashrate input -->
+    <div class="row justify-content-center mb-4">
+      <form [formGroup]="form" class="mining-odds-form">
+        <label class="form-label" i18n="mining-odds.your-hashrate">Your Hashrate</label>
+        <div class="input-group input-group-lg">
+          <input
+            type="number"
+            inputmode="decimal"
+            class="form-control"
+            formControlName="hashrate"
+            min="0"
+            placeholder="0"
+          >
+          <select class="form-select unit-select" formControlName="unit">
+            <option *ngFor="let unit of units; let i = index" [value]="i">{{ unit.label }}</option>
+          </select>
+        </div>
+      </form>
+    </div>
+
+    <!-- Results -->
+    <ng-container *ngIf="(results$ | async) as results; else noInput">
+
+      <!-- Expected time + Chance per block -->
+      <div class="row justify-content-center gap-3 mb-4">
+        <div class="col-auto text-center stat-card">
+          <div class="stat-label" i18n="mining-odds.expected-time">Expected time to find a block</div>
+          <div class="expected-time-value">{{ formatExpectedTime(results.expectedTime) }}</div>
+        </div>
+        <div class="col-auto text-center stat-card">
+          <div class="stat-label" i18n="mining-odds.chance-per-block">Chance per block</div>
+          <div class="expected-time-value">1 in <span class="accent-number">{{ formatOddsNumber(results.oddsPerBlock) }}</span></div>
+        </div>
+      </div>
+
+      <div class="row justify-content-center mb-3">
+        <div class="col-auto small text-center text-secondary" i18n="mining-odds.solo-only">
+          Solo mining only &mdash; does not account for pool fees or luck
+        </div>
+      </div>
+
+      <!-- Odds table -->
+      <div class="row justify-content-center">
+          <table class="table odds-table  mx-auto">
+            <thead>
+              <tr>
+                <th i18n="mining-odds.col-period">In</th>
+                <th i18n="mining-odds.col-odds">Chance of finding a block</th>
+                <th class="d-none d-md-table-cell" i18n="mining-odds.col-equivalent">Comparable to…</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of results.oddsRows">
+                <td class="period-cell">{{ row.period }}</td>
+                <td [class.odds-good]="row.probability > 0.5" [class.odds-fair]="row.probability > 0.01 && row.probability <= 0.5">
+                  1 in <span class="accent-number">{{ formatOddsNumber(row.oddsOneIn) }}</span>
+                </td>
+                <td class=" d-none d-md-table-cell">{{ row.equivalent }}</td>
+              </tr>
+            </tbody>
+          </table>
+      </div>
+
+    </ng-container>
+
+    <ng-template #noInput>
+      <div class="row justify-content-center">
+        <div class="col-auto text-center" i18n="mining-odds.enter-hashrate">
+          Enter your hashrate above to see your mining odds.
+        </div>
+      </div>
+    </ng-template>
+
+  </ng-container>
+
+  <ng-template #loading>
+    <div class="row justify-content-center mt-5">
+      <div class="col-auto text-center" i18n="mining-odds.loading">
+        Loading network data…
+      </div>
+    </div>
+  </ng-template>
+
+</div>
