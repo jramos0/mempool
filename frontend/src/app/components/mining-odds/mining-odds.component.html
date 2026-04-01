@@ -1,10 +1,20 @@
 <div class="container-xl">
 
   <div class="text-center mb-4">
-    <h2 i18n="mining-odds.title">Solo Mining Odds</h2>
+    <h2 i18n="mining-odds.title">Mining Odds</h2>
     <p class="text-secondary" i18n="mining-odds.subtitle">
-      Estimate your solo mining probability of finding a block based on your hashrate.
+      Estimate your mining probability or expected earnings based on your hashrate.
     </p>
+  </div>
+
+  <!-- Mode toggle -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-auto">
+      <div class="mode-toggle">
+        <button class="mode-btn" [class.active]="miningMode === 'solo'" (click)="setMode('solo')" i18n="mining-odds.solo-tab">Solo Mining</button>
+        <button class="mode-btn" [class.active]="miningMode === 'pool'" (click)="setMode('pool')" i18n="mining-odds.pool-tab">Pool Mining (FPPS)</button>
+      </div>
+    </div>
   </div>
 
   <ng-container *ngIf="(networkStats$ | async) as network; else loading">
@@ -25,7 +35,7 @@
     <div class="row justify-content-center mb-4">
       <form [formGroup]="form" class="mining-odds-form">
         <label class="form-label" i18n="mining-odds.your-hashrate">Your Hashrate</label>
-        <div class="input-group input-group-lg">
+        <div class="input-group input-group-lg mb-3">
           <input
             type="number"
             inputmode="decimal"
@@ -38,52 +48,119 @@
             <option *ngFor="let unit of units; let i = index" [value]="i">{{ unit.label }}</option>
           </select>
         </div>
+
+        <!-- Pool fee input (only in pool mode) -->
+        <ng-container *ngIf="miningMode === 'pool'">
+          <label class="form-label" i18n="mining-odds.pool-fee">Pool Fee (%)</label>
+          <div class="input-group input-group-lg">
+            <input
+              type="number"
+              inputmode="decimal"
+              class="form-control"
+              formControlName="poolFee"
+              min="0"
+              max="100"
+              step="0.1"
+              placeholder="2"
+            >
+            <span class="input-group-text">%</span>
+          </div>
+        </ng-container>
       </form>
     </div>
 
-    <!-- Results -->
-    <ng-container *ngIf="(results$ | async) as results; else noInput">
+    <!-- ============ SOLO MINING RESULTS ============ -->
+    <ng-container *ngIf="miningMode === 'solo'">
+      <ng-container *ngIf="(results$ | async) as results; else noInput">
 
-      <!-- Expected time + Chance per block -->
-      <div class="row justify-content-center gap-3 mb-4">
-        <div class="col-auto text-center stat-card">
-          <div class="stat-label" i18n="mining-odds.expected-time">Expected time to find a block</div>
-          <div class="expected-time-value">{{ formatExpectedTime(results.expectedTime) }}</div>
+        <!-- Expected time + Chance per block -->
+        <div class="row justify-content-center gap-3 mb-4">
+          <div class="col-auto text-center stat-card">
+            <div class="stat-label" i18n="mining-odds.expected-time">Expected time to find a block</div>
+            <div class="expected-time-value">{{ formatExpectedTime(results.expectedTime) }}</div>
+          </div>
+          <div class="col-auto text-center stat-card">
+            <div class="stat-label" i18n="mining-odds.chance-per-block">Chance per block</div>
+            <div class="expected-time-value">1 in <span class="accent-number">{{ formatOddsNumber(results.oddsPerBlock) }}</span></div>
+          </div>
         </div>
-        <div class="col-auto text-center stat-card">
-          <div class="stat-label" i18n="mining-odds.chance-per-block">Chance per block</div>
-          <div class="expected-time-value">1 in <span class="accent-number">{{ formatOddsNumber(results.oddsPerBlock) }}</span></div>
+
+        <div class="row justify-content-center mb-3">
+          <div class="col-auto small text-center text-secondary" i18n="mining-odds.solo-only">
+            Solo mining only &mdash; does not account for pool fees or luck
+          </div>
         </div>
-      </div>
 
-      <div class="row justify-content-center mb-3">
-        <div class="col-auto small text-center text-secondary" i18n="mining-odds.solo-only">
-          Solo mining only &mdash; does not account for pool fees or luck
+        <!-- Odds table -->
+        <div class="row justify-content-center">
+            <table class="table odds-table mx-auto">
+              <thead>
+                <tr>
+                  <th i18n="mining-odds.col-period">In</th>
+                  <th i18n="mining-odds.col-odds">Chance of finding a block</th>
+                  <th class="d-none d-md-table-cell" i18n="mining-odds.col-equivalent">Comparable to…</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of results.oddsRows">
+                  <td class="period-cell">{{ row.period }}</td>
+                  <td [class.odds-good]="row.probability > 0.5" [class.odds-fair]="row.probability > 0.01 && row.probability <= 0.5">
+                    1 in <span class="accent-number">{{ formatOddsNumber(row.oddsOneIn) }}</span>
+                  </td>
+                  <td class="d-none d-md-table-cell">{{ row.equivalent }}</td>
+                </tr>
+              </tbody>
+            </table>
         </div>
-      </div>
 
-      <!-- Odds table -->
-      <div class="row justify-content-center">
-          <table class="table odds-table  mx-auto">
-            <thead>
-              <tr>
-                <th i18n="mining-odds.col-period">In</th>
-                <th i18n="mining-odds.col-odds">Chance of finding a block</th>
-                <th class="d-none d-md-table-cell" i18n="mining-odds.col-equivalent">Comparable to…</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let row of results.oddsRows">
-                <td class="period-cell">{{ row.period }}</td>
-                <td [class.odds-good]="row.probability > 0.5" [class.odds-fair]="row.probability > 0.01 && row.probability <= 0.5">
-                  1 in <span class="accent-number">{{ formatOddsNumber(row.oddsOneIn) }}</span>
-                </td>
-                <td class=" d-none d-md-table-cell">{{ row.equivalent }}</td>
-              </tr>
-            </tbody>
-          </table>
-      </div>
+      </ng-container>
+    </ng-container>
 
+    <!-- ============ POOL MINING (FPPS) RESULTS ============ -->
+    <ng-container *ngIf="miningMode === 'pool'">
+      <ng-container *ngIf="(poolResults$ | async) as poolResults; else noInput">
+
+        <!-- Daily + Monthly earnings cards -->
+        <div class="row justify-content-center gap-3 mb-4">
+          <div class="col-auto text-center stat-card">
+            <div class="stat-label" i18n="mining-odds.daily-earnings">Expected Daily Earnings</div>
+            <div class="expected-time-value"><span class="accent-number">{{ formatBtc(poolResults.dailyBtc) }}</span> BTC</div>
+            <div class="stat-sub">{{ formatSats(poolResults.dailyBtc * 1e8) }} sats</div>
+          </div>
+          <div class="col-auto text-center stat-card">
+            <div class="stat-label" i18n="mining-odds.monthly-earnings">Expected Monthly Earnings</div>
+            <div class="expected-time-value"><span class="accent-number">{{ formatBtc(poolResults.monthlyBtc) }}</span> BTC</div>
+            <div class="stat-sub">{{ formatSats(poolResults.monthlyBtc * 1e8) }} sats</div>
+          </div>
+        </div>
+
+        <div class="row justify-content-center mb-3">
+          <div class="col-auto small text-center text-secondary" i18n="mining-odds.fpps-note">
+            FPPS rate: {{ (poolResults.fppsRate * 100) | number:'1.2-2' }}% &mdash; subsidy ({{ formatBtc(poolResults.subsidyPerBlock) }} BTC/block) + avg fees ({{ formatBtc(poolResults.avgFeesPerBlock) }} BTC/block)
+          </div>
+        </div>
+
+        <!-- Earnings table -->
+        <div class="row justify-content-center">
+            <table class="table odds-table mx-auto">
+              <thead>
+                <tr>
+                  <th i18n="mining-odds.col-period">Period</th>
+                  <th i18n="mining-odds.col-btc">BTC Earned</th>
+                  <th i18n="mining-odds.col-sats">Sats Earned</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of poolResults.earningsRows">
+                  <td class="period-cell">{{ row.period }}</td>
+                  <td><span class="accent-number">{{ formatBtc(row.btc) }}</span></td>
+                  <td>{{ formatSats(row.sats) }}</td>
+                </tr>
+              </tbody>
+            </table>
+        </div>
+
+      </ng-container>
     </ng-container>
 
     <ng-template #noInput>

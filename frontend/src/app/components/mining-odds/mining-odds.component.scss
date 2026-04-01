@@ -1,3 +1,43 @@
+.mode-toggle {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--secondary);
+  border-radius: 8px;
+  overflow: hidden;
+
+  .mode-btn {
+    padding: 10px 24px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+
+    &.active {
+      background: #1a3a4a;
+      color: #00ddff;
+    }
+
+    &:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
+}
+
+.stat-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+}
+
+.input-group-text {
+  background-color: var(--bg);
+  border-color: var(--secondary);
+  color: inherit;
+}
+
 .network-stats-bar {
   background: var(--bg);
   border: 1px solid var(--secondary);

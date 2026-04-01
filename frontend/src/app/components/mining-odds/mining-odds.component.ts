@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { combineLatest, Observable } from 'rxjs';
-import { map, startWith } from 'rxjs/operators';
+import { map, startWith, switchMap } from 'rxjs/operators';
 import { StateService } from '@app/services/state.service';
 import { MiningService } from '@app/services/mining.service';
-import { DifficultyAdjustment } from '@interfaces/node-api.interface';
+import { ApiService } from '@app/services/api.service';
+import { DifficultyAdjustment, RewardStats } from '@interfaces/node-api.interface';
 
 export interface OddsRow {
   period: string;
@@ -13,6 +14,15 @@ export interface OddsRow {
   oddsOneIn: number;
   equivalent: string;
 }
+
+export interface PoolEarningsRow {
+  period: string;
+  btc: number;
+  sats: number;
+  usd?: number;
+}
+
+export type MiningMode = 'solo' | 'pool';
 
 const HASHRATE_UNITS = [
   { label: 'H/s',  multiplier: 1 },
@@ -61,6 +71,7 @@ function getEquivalent(oddsOneIn: number): string {
 export class MiningOddsComponent implements OnInit {
   form: FormGroup;
   units = HASHRATE_UNITS;
+  miningMode: MiningMode = 'solo';
 
   networkStats$: Observable<{ hashrate: number; timeAvg: number; difficulty: number }>;
   results$: Observable<{
@@ -69,17 +80,32 @@ export class MiningOddsComponent implements OnInit {
     userHashrateHs: number;
     oddsPerBlock: number;
   } | null>;
+  poolResults$: Observable<{
+    earningsRows: PoolEarningsRow[];
+    dailyBtc: number;
+    monthlyBtc: number;
+    fppsRate: number;
+    subsidyPerBlock: number;
+    avgFeesPerBlock: number;
+    userHashrateHs: number;
+  } | null>;
 
   constructor(
     private formBuilder: FormBuilder,
     private stateService: StateService,
     private miningService: MiningService,
+    private apiService: ApiService,
   ) {}
+
+  setMode(mode: MiningMode): void {
+    this.miningMode = mode;
+  }
 
   ngOnInit(): void {
     this.form = this.formBuilder.group({
       hashrate: [1],
       unit: [DEFAULT_UNIT_INDEX],
+      poolFee: [2],
     });
 
     // Network stats: hashrate (H/s) + avg block time (ms) + difficulty
@@ -99,6 +125,7 @@ export class MiningOddsComponent implements OnInit {
       startWith(this.form.value)
     );
 
+    // Solo mining results
     this.results$ = combineLatest([
       this.networkStats$,
       formValues$,
@@ -145,6 +172,69 @@ export class MiningOddsComponent implements OnInit {
         return { oddsRows, expectedTime, userHashrateHs, oddsPerBlock };
       })
     );
+
+    // Pool mining (FPPS) results
+    this.poolResults$ = combineLatest([
+      this.networkStats$,
+      this.apiService.getRewardStats$(144),
+      formValues$,
+    ]).pipe(
+      map((combined: any[]) => {
+        const network = combined[0];
+        const rewardStats: RewardStats = combined[1];
+        const formVal = combined[2];
+        const unitMultiplier = HASHRATE_UNITS[formVal.unit]?.multiplier ?? 1e12;
+        const userHashrateHs = parseFloat(formVal.hashrate) * unitMultiplier;
+        const poolFee = (parseFloat(formVal.poolFee) || 0) / 100;
+
+        if (!userHashrateHs || userHashrateHs <= 0 || !network.hashrate) {
+          return null;
+        }
+
+        const blockCount = rewardStats.endBlock - rewardStats.startBlock + 1;
+        const totalSubsidiesSats = rewardStats.totalReward - rewardStats.totalFee;
+        const totalFeesSats = rewardStats.totalFee;
+
+        // FPPS rate = 1 + (Sum of Block Transaction Fees / Sum of Block Subsidies)
+        const fppsRate = 1 + (totalFeesSats / totalSubsidiesSats);
+
+        const subsidyPerBlockBtc = totalSubsidiesSats / blockCount / 1e8;
+        const avgFeesPerBlockBtc = totalFeesSats / blockCount / 1e8;
+        const ratio = userHashrateHs / network.hashrate;
+        const blocksPerDay = 144;
+
+        // FPPS daily earnings = ratio × blocks_per_day × subsidy × fpps_rate × (1 - pool_fee)
+        const dailyBtc = ratio * blocksPerDay * subsidyPerBlockBtc * fppsRate * (1 - poolFee);
+
+        const periods: { label: string; days: number }[] = [
+          { label: '1 hour',   days: 1 / 24 },
+          { label: '1 day',    days: 1 },
+          { label: '1 week',   days: 7 },
+          { label: '1 month',  days: 30 },
+          { label: '1 year',   days: 365 },
+          { label: '10 years', days: 3650 },
+        ];
+
+        const earningsRows: PoolEarningsRow[] = periods.map(p => {
+          const btc = dailyBtc * p.days;
+          return {
+            period: p.label,
+            btc,
+            sats: Math.round(btc * 1e8),
+          };
+        });
+
+        return {
+          earningsRows,
+          dailyBtc,
+          monthlyBtc: dailyBtc * 30,
+          fppsRate,
+          subsidyPerBlock: subsidyPerBlockBtc,
+          avgFeesPerBlock: avgFeesPerBlockBtc,
+          userHashrateHs,
+        };
+      })
+    );
   }
 
   formatOddsNumber(oddsOneIn: number): string {
@@ -180,6 +270,21 @@ export class MiningOddsComponent implements OnInit {
       }
       return `~${Math.round(years).toLocaleString()} years`;
     }
+  }
+
+  formatBtc(btc: number): string {
+    if (btc < 0.00001) {
+      return btc.toFixed(8);
+    } else if (btc < 0.01) {
+      return btc.toFixed(6);
+    } else if (btc < 1) {
+      return btc.toFixed(4);
+    }
+    return btc.toFixed(2);
+  }
+
+  formatSats(sats: number): string {
+    return Math.round(sats).toLocaleString();
   }
 
   formatHashrate(hs: number): string {
