@@ -64,7 +64,7 @@
 
     <!-- Fee widget -->
     <div class="row justify-content-center mb-2 ">
-      <div class="col-12 col-md-10 col-lg-8 fee-widget-row">
+      <div class="col-12 col-md-10 col-lg-10 fee-widget-row">
 
         <!-- Color bar -->
         <div class="fee-bar-row">
@@ -139,7 +139,7 @@
 
     <!-- Comparative analysis -->
     <div class="row justify-content-center" *ngIf="results.custom">
-      <div class="col-12 col-md-10 col-lg-8">
+      <div class="col-12 col-md-10 col-lg-10">
         <div class="comparison-card" [ngClass]="results.delta > 0 ? 'card-wait' : 'card-save'">
           <h5 class="comparison-title mb-3" i18n="utxo-spending.comparison-title">Consolidation Analysis</h5>
 
@@ -173,7 +173,7 @@
             </ng-container>
             <ng-template #waitIsSmarter>
               <ng-container *ngIf="results.delta > 0; else breakEven">
-                <div class="delta-label wait" i18n="utxo-spending.wait-smarter">You would be saving this amount of sats</div>
+                <div class="delta-label wait" i18n="utxo-spending.wait-smarter">You should wait to save this amount of sats</div>
                 <div class="delta-value wait">{{ results.delta | number }} sats</div>
                 <div class="delta-fiat wait"><app-fiat [value]="results.delta"></app-fiat></div>
                 <div class="delta-note small text-muted mt-1" i18n="utxo-spending.wait-advice">
@@ -194,7 +194,7 @@
 
   <ng-template #loading>
     <div class="row justify-content-center mt-4">
-      <div class="col-12 col-md-10 col-lg-8">
+      <div class="col-12 col-md-10 col-lg-10">
         <div class="fee-bar-row">
           <div class="fee-progress-bar" [style.background]="noPriority">
             <span class="fee-label" i18n="fees-box.no-priority">No Priority</span>

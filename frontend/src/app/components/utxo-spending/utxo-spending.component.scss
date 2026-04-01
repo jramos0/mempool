@@ -48,10 +48,6 @@
       flex: 0 0 13%;
       border-radius: 0 10px 10px 0;
       background: var(--skeleton-bg-light) !important;
-
-      @media (767px < width < 992px), (width < 576px) {
-        display: none;
-      }
     }
   }
 
@@ -79,7 +75,6 @@
   .item {
     flex: 1;
 
-    // "No Priority" hidden on medium screens (mirrors fees-box)
     &:first-child {
       @media (767px < width < 992px), (width < 576px) {
         display: none;
@@ -88,10 +83,6 @@
 
     &.item-custom {
       flex: 0 0 13%;
-
-      @media (767px < width < 992px), (width < 576px) {
-        display: none;
-      }
     }
   }
 
@@ -119,7 +110,6 @@
     }
   }
 
-  // vertical separator between items
   .item-gap {
     flex: 0 0 6px;
     align-self: stretch;
@@ -139,10 +129,6 @@
       transparent 4px,
       transparent 8px
     );
-
-    @media (767px < width < 992px), (width < 576px) {
-      display: none;
-    }
   }
 }
 
