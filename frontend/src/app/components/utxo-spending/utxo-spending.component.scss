@@ -4,6 +4,52 @@
   }
 }
 
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fee-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+  }
+
+  &::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.slider-value {
+  font-size: 13px;
+  color: var(--transparent-fg);
+  white-space: nowrap;
+  min-width: 80px;
+  text-align: right;
+}
+
 // ── Fee widget ────────────────────────────────────────────────────────────────
 .fee-widget-row {
   background-color: rgb(29, 31, 49);

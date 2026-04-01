@@ -42,9 +42,10 @@
 
         <div class="mb-3">
           <label class="form-label text-muted small" i18n="utxo-spending.future-fee-rate">Future fee rate (sat/vB) — "what if" scenario</label>
-          <div class="input-group">
-            <input type="number" class="form-control" formControlName="futureFeeRate" min="0" step="1">
-            <span class="input-group-text">sat/vB</span>
+          <div class="slider-container">
+            <input type="range" class="fee-slider" formControlName="futureFeeRate" min="1" max="1000" step="1"
+              [style.background]="getSliderBackground(form.get('futureFeeRate').value)">
+            <span class="slider-value">{{ form.get('futureFeeRate').value }} sat/vB</span>
           </div>
         </div>
 
@@ -187,6 +188,22 @@
           </div>
 
         </div>
+
+        <!-- Consolidation cost chart -->
+        <div class="row justify-content-center mt-2">
+          <div class="col-12 col-md-10 col-lg-10">
+            <app-utxo-consolidation-chart
+              [numInputs]="results.numInputs"
+              [inputSize]="results.inputSize"
+              [txSize]="results.vsize"
+              [futureFeeRate]="results.futureFeeRate"
+              [fastestFeeRate]="results.fastest.feeRate"
+              [halfHourFeeRate]="results.halfHour.feeRate"
+              [hourFeeRate]="results.hour.feeRate"
+            ></app-utxo-consolidation-chart>
+          </div>
+        </div>
+
       </div>
     </div>
 

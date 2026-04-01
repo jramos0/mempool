@@ -1,0 +1,57 @@
+.consolidation-chart-wrap {
+  margin-top: 1.5rem;
+}
+
+.chart {
+  width: 100%;
+  height: 280px;
+}
+
+// ── Custom legend ─────────────────────────────────────────────────────────────
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--transparent-fg);
+}
+
+.legend-swatch {
+  display: inline-block;
+  flex-shrink: 0;
+
+  &.swatch-solid {
+    width: 22px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  &.swatch-dashed {
+    width: 22px;
+    height: 0;
+    border-top: 2px dashed currentColor;
+    background: transparent;
+  }
+
+  &.swatch-area {
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
+    background: rgba(93, 202, 165, 0.25);
+    border: 1px solid rgba(93, 202, 165, 0.5);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .chart {
+    height: 220px;
+  }
+}

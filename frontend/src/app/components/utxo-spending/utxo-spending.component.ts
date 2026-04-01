@@ -47,6 +47,9 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
 
   results$: Observable<{
     vsize: number;
+    numInputs: number;
+    inputSize: number;
+    futureFeeRate: number;
     economy: CostRow;
     hour: CostRow;
     halfHour: CostRow;
@@ -74,7 +77,7 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
       inputType:     ['p2wpkh'],
       numOutputs:    [1, [Validators.required, Validators.min(1)]],
       outputType:    ['p2wpkh'],
-      futureFeeRate: [1, [Validators.min(0)]],
+      futureFeeRate: [1, [Validators.min(1), Validators.max(1000)]],
     });
 
     this.themeSubscription = this.themeService.themeState$.subscribe((state) => {
@@ -83,15 +86,15 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.results$ = combineLatest([
-      this.form.valueChanges.pipe(startWith(this.form.value)),
+    this.results$ = (combineLatest([
+      this.form.valueChanges.pipe(startWith(this.form.value)) as Observable<any>,
       this.stateService.recommendedFees$.pipe(
         tap((fees) => {
           this.fees = fees;
           this.setFeeGradient();
         })
-      ),
-    ]).pipe(
+      ) as Observable<Recommendedfees>,
+    ]) as Observable<[any, Recommendedfees]>).pipe(
       map(([formValue, fees]: [any, Recommendedfees]) => {
         const numInputs     = Number(formValue.numInputs);
         const numOutputs    = Number(formValue.numOutputs);
@@ -117,7 +120,7 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
         const hour     = makeRow('Low Priority',    fees.hourFee);
         const halfHour = makeRow('Medium Priority', fees.halfHourFee);
         const fastest  = makeRow('High Priority',   fees.fastestFee);
-        const custom   = futureFeeRate > 0 ? makeRow('Custom', futureFeeRate) : null;
+        const custom   = futureFeeRate >= 1 ? makeRow('Custom', futureFeeRate) : null;
 
         const rows: CostRow[] = [economy, hour, halfHour, fastest];
         if (custom) { rows.push(custom); }
@@ -128,7 +131,7 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
           : 0;
         const delta = consolidationNow - inputCostFuture;
 
-        return { vsize, economy, hour, halfHour, fastest, custom, rows, consolidationNow, inputCostFuture, delta };
+        return { vsize, numInputs, inputSize, futureFeeRate, economy, hour, halfHour, fastest, custom, rows, consolidationNow, inputCostFuture, delta };
       })
     );
   }
@@ -148,6 +151,18 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
     this.gradient  = `linear-gradient(to right, ${startColor}, ${endColor})`;
     this.noPriority = startColor;
     this.cd.markForCheck();
+  }
+
+  getSliderBackground(rate: number): string {
+    const colors = this.themeService.mempoolFeeColors;
+    if (!colors?.length) {
+      return '';
+    }
+    let idx = feeLevels.slice().reverse().findIndex((lvl: number) => rate >= lvl);
+    idx = idx >= 0 ? feeLevels.length - idx : 0;
+    const color = '#' + (colors[idx - 1] || colors[colors.length - 1]);
+    const pct = Math.round(((rate - 1) / (1000 - 1)) * 100);
+    return `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, var(--skeleton-bg-light) ${pct}%, var(--skeleton-bg-light) 100%)`;
   }
 
   ngOnDestroy(): void {

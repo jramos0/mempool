@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { NgxEchartsModule } from 'ngx-echarts';
 import { NgbCollapseModule, NgbTypeaheadModule, NgbNavModule, NgbTooltipModule, NgbPaginationModule, NgbDropdownModule, NgbDatepickerModule } from '@ng-bootstrap/ng-bootstrap';
 import { FontAwesomeModule, FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import { faFilter, faAngleDown, faAngleUp, faAngleRight, faAngleLeft, faBolt, faCogs, faDatabase, faExchangeAlt, faInfoCircle,
@@ -123,6 +124,7 @@ import { ClockFaceComponent } from '@components/clock-face/clock-face.component'
 import { ClockComponent } from '@components/clock/clock.component';
 import { CalculatorComponent } from '@components/calculator/calculator.component';
 import { UtxoSpendingComponent } from '@components/utxo-spending/utxo-spending.component';
+import { UtxoConsolidationChartComponent } from '@components/utxo-spending/utxo-consolidation-chart/utxo-consolidation-chart.component';
 import { BitcoinsatoshisPipe } from '@app/shared/pipes/bitcoinsatoshis.pipe';
 import { HttpErrorComponent } from '@app/shared/components/http-error/http-error.component';
 import { TwitterWidgetComponent } from '@components/twitter-widget/twitter-widget.component';
@@ -236,6 +238,7 @@ import { GithubLogin } from '@components/github-login.component/github-login.com
     MiningPoolComponent,
     CalculatorComponent,
     UtxoSpendingComponent,
+    UtxoConsolidationChartComponent,
     BitcoinsatoshisPipe,
     BlockViewComponent,
     EightBlocksComponent,
@@ -275,6 +278,9 @@ import { GithubLogin } from '@components/github-login.component/github-login.com
     NgbDatepickerModule,
     InfiniteScrollModule,
     FontAwesomeModule,
+    NgxEchartsModule.forRoot({
+      echarts: () => import('@app/graphs/echarts').then(m => m.echarts),
+    }),
   ],
   providers: [
     BytesPipe,
@@ -413,6 +419,7 @@ import { GithubLogin } from '@components/github-login.component/github-login.com
     OnlyVsizeDirective,
     OnlyWeightDirective,
     UtxoSpendingComponent,
+    UtxoConsolidationChartComponent,
   ]
 })
 export class SharedModule {

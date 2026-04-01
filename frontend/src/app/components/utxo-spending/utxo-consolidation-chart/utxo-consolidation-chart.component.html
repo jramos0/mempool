@@ -1,0 +1,36 @@
+<div class="consolidation-chart-wrap">
+
+  <!-- Custom legend -->
+  <div class="chart-legend">
+    <div class="legend-item">
+      <span class="legend-swatch swatch-solid" style="background:#E24B4A"></span>
+      <span i18n="utxo-spending.chart.input-cost">Input cost (future)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch swatch-dashed" style="border-color:#5DCAA5"></span>
+      <span i18n="utxo-spending.chart.high-priority">High priority</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch swatch-dashed" style="border-color:#EF9F27"></span>
+      <span i18n="utxo-spending.chart.medium-priority">Medium priority</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch swatch-dashed" style="border-color:#85B7EB"></span>
+      <span i18n="utxo-spending.chart.low-priority">Low priority</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-swatch swatch-area"></span>
+      <span i18n="utxo-spending.chart.savings">Savings zone</span>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div
+    class="chart"
+    *browserOnly
+    echarts
+    [initOpts]="chartInitOptions"
+    [options]="chartOptions"
+  ></div>
+
+</div>
