@@ -121,6 +121,7 @@ import { ClockchainComponent } from '@components/clockchain/clockchain.component
 import { ClockFaceComponent } from '@components/clock-face/clock-face.component';
 import { ClockComponent } from '@components/clock/clock.component';
 import { CalculatorComponent } from '@components/calculator/calculator.component';
+import { UtxoSpendingComponent } from '@components/utxo-spending/utxo-spending.component';
 import { BitcoinsatoshisPipe } from '@app/shared/pipes/bitcoinsatoshis.pipe';
 import { HttpErrorComponent } from '@app/shared/components/http-error/http-error.component';
 import { TwitterWidgetComponent } from '@components/twitter-widget/twitter-widget.component';
@@ -232,6 +233,7 @@ import { GithubLogin } from '@components/github-login.component/github-login.com
     TestnetAlertComponent,
     GlobalFooterComponent,
     CalculatorComponent,
+    UtxoSpendingComponent,
     BitcoinsatoshisPipe,
     BlockViewComponent,
     EightBlocksComponent,
@@ -407,6 +409,7 @@ import { GithubLogin } from '@components/github-login.component/github-login.com
 
     OnlyVsizeDirective,
     OnlyWeightDirective,
+    UtxoSpendingComponent,
   ]
 })
 export class SharedModule {

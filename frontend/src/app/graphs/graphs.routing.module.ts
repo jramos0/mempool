@@ -25,6 +25,7 @@ import { AccelerationsListComponent } from '@components/acceleration/acceleratio
 import { AddressComponent } from '@components/address/address.component';
 import { WalletComponent } from '@components/wallet/wallet.component';
 import { CalculatorComponent } from '@components/calculator/calculator.component';
+import { UtxoSpendingComponent } from '@components/utxo-spending/utxo-spending.component';
 
 const browserWindow = window || {};
 // @ts-ignore
@@ -38,6 +39,10 @@ const routes: Routes = [
       {
         path: 'tools/calculator',
         component: CalculatorComponent
+      },
+      {
+        path: 'tools/utxospending',
+        component: UtxoSpendingComponent
       },
       {
         path: 'mining/pool/:slug',

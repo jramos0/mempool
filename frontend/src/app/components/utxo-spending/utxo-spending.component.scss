@@ -1,0 +1,315 @@
+.utxo-form {
+  .form-label {
+    margin-bottom: 0.25rem;
+  }
+}
+
+// ── Fee widget ────────────────────────────────────────────────────────────────
+.fee-widget-row {
+  background-color: rgb(29, 31, 49);
+  padding-top: 6px;
+  margin-top: 1%;
+
+}
+
+
+.fee-bar-row {
+  display: flex;
+  width: 100%;
+  margin-bottom: 12px;
+  padding-top: 2px;
+
+  .fee-progress-bar {
+    flex: 0 0 22%;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 1s;
+    color: #fff;
+    overflow: hidden;
+    background-color: var(--skeleton-bg-light);
+
+    @media (767px < width < 992px), (width < 576px) {
+      display: none;
+    }
+
+    &.priority {
+      flex: 1;
+      border-radius: 0 10px 10px 0;
+      justify-content: space-around;
+
+      &.has-custom-sibling {
+        border-radius: 0;
+      }
+    }
+
+    &.custom-bar {
+      flex: 0 0 13%;
+      border-radius: 0 10px 10px 0;
+      background: var(--skeleton-bg-light) !important;
+
+      @media (767px < width < 992px), (width < 576px) {
+        display: none;
+      }
+    }
+  }
+
+  .bar-gap {
+    flex: 0 0 6px;
+    height: 22px;
+    @media (767px < width < 992px), (width < 576px) {
+      display: none;
+    }
+  }
+}
+
+.fee-label {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+}
+
+.fee-estimation-container {
+  display: flex;
+  flex-direction: row;
+  text-align: center;
+  .item {
+    flex: 1;
+
+    // "No Priority" hidden on medium screens (mirrors fees-box)
+    &:first-child {
+      @media (767px < width < 992px), (width < 576px) {
+        display: none;
+      }
+    }
+
+    &.item-custom {
+      flex: 0 0 13%;
+
+      @media (767px < width < 992px), (width < 576px) {
+        display: none;
+      }
+    }
+  }
+
+  .card-text {
+    padding: 6px 2px;
+
+    .sats-amount {
+      font-size: 18px;
+      font-weight: 600;
+      border-bottom: 1px solid #ffffff1c;
+      width: fit-content;
+      margin: 0 auto 2px;
+    }
+
+    .fiat-amount {
+      display: block;
+      font-size: 13px;
+    }
+
+    .fee-rate-label {
+      display: block;
+      font-size: 11px;
+      color: var(--transparent-fg);
+      margin-top: 2px;
+    }
+  }
+
+  // vertical separator between items
+  .item-gap {
+    flex: 0 0 6px;
+    align-self: stretch;
+
+    @media (767px < width < 992px), (width < 576px) {
+      display: none;
+    }
+  }
+
+  .item-gap-custom {
+    flex: 0 0 4px;
+    align-self: stretch;
+    background: repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12),
+      rgba(255, 255, 255, 0.12) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+
+    @media (767px < width < 992px), (width < 576px) {
+      display: none;
+    }
+  }
+}
+
+.loading-container {
+  height: 60px;
+
+  .card-text {
+    .skeleton-loader {
+      display: block;
+      width: 100%;
+
+      &:first-child { max-width: 70px; margin: 8px auto 3px; }
+      &:last-child  { max-width: 55px; margin: 0 auto; }
+    }
+  }
+}
+
+.custom-badge {
+  display: inline-block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(93, 97, 130, 0.4);
+  color: var(--skeleton-bg-light);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-top: 3px;
+}
+
+// ── Cost table ────────────────────────────────────────────────────────────────
+
+.cost-table {
+  thead th {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--transparent-fg);
+    padding-bottom: 0.5rem;
+  }
+
+  tbody td {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+    vertical-align: middle;
+  }
+
+  .custom-row td {
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    font-style: italic;
+  }
+}
+
+.priority-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+
+  &.dot-red    { background-color: #dc3545; }
+  &.dot-orange { background-color: #fd7e14; }
+  &.dot-yellow { background-color: #ffc107; }
+  &.dot-green  { background-color: #28a745; }
+  &.dot-blue   { background-color: var(--skeleton-bg-light); }
+}
+
+// ── vSize display ─────────────────────────────────────────────────────────────
+
+.vsize-value {
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.vsize-unit {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--transparent-fg);
+}
+
+// ── Comparative analysis card ─────────────────────────────────────────────────
+
+.comparison-card {
+  border-radius: 0.75rem;
+  padding: 1.5rem; 
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--skeleton-bg-light);
+
+  &.card-save {
+    border-color: var(--success);
+  }
+
+  &.card-wait {
+    background-color: transparent;
+    border-color: var(--skeleton-bg-light);
+  }
+}
+
+.comparison-title {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--transparent-fg);
+}
+
+.comparison-item {
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.5rem;
+}
+
+.comparison-label {
+  margin-bottom: 0.2rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comparison-sats {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.comparison-fiat {
+  font-size: 0.95rem;
+  color: var(--transparent-fg);
+}
+
+.comparison-note {
+  margin-top: 0.25rem;
+}
+
+.delta-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+}
+
+.delta-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+
+  &.save { color: var(--success); }
+  &.wait { color: #ffc107; }
+}
+
+.delta-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+
+  &.save { color: var(--success); }
+  &.wait { color: #ffc107; }
+}
+
+.delta-fiat {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+@media (max-width: 575.98px) {
+  .vsize-value { font-size: 1.8rem; }
+  .delta-value { font-size: 1.5rem; }
+}

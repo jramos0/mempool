@@ -1,0 +1,220 @@
+<div class="container-xl">
+  <div class="text-center mb-4">
+    <h2 i18n="utxo-spending.title">UTXO Spending Cost</h2>
+    <p class="text-muted" i18n="utxo-spending.subtitle">Estimate the fee cost to spend your UTXOs and compare consolidating now vs. waiting for lower fees.</p>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+      <form [formGroup]="form" class="utxo-form">
+
+        <div class="row g-2 mb-3">
+          <div class="col-5">
+            <label class="form-label text-muted small" i18n="utxo-spending.num-inputs">Number of inputs (UTXOs)</label>
+            <input type="number" class="form-control" formControlName="numInputs" min="1" step="1">
+          </div>
+          <div class="col-7">
+            <label class="form-label text-muted small" i18n="utxo-spending.input-type">Input type (address type)</label>
+            <select class="form-select" formControlName="inputType">
+              <option value="p2wpkh">P2WPKH — Native SegWit (68 vB)</option>
+              <option value="p2tr">P2TR — Taproot (57.5 vB)</option>
+              <option value="p2sh_p2wpkh">P2SH-P2WPKH — Nested SegWit (91 vB)</option>
+              <option value="p2pkh">P2PKH — Legacy (148 vB)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-5">
+            <label class="form-label text-muted small" i18n="utxo-spending.num-outputs">Number of outputs</label>
+            <input type="number" class="form-control" formControlName="numOutputs" min="1" step="1">
+          </div>
+          <div class="col-7">
+            <label class="form-label text-muted small" i18n="utxo-spending.output-type">Output type</label>
+            <select class="form-select" formControlName="outputType">
+              <option value="p2wpkh">P2WPKH — Native SegWit (31 vB)</option>
+              <option value="p2tr">P2TR — Taproot (43 vB)</option>
+              <option value="p2sh">P2SH (32 vB)</option>
+              <option value="p2pkh">P2PKH — Legacy (34 vB)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label text-muted small" i18n="utxo-spending.future-fee-rate">Future fee rate (sat/vB) — "what if" scenario</label>
+          <div class="input-group">
+            <input type="number" class="form-control" formControlName="futureFeeRate" min="0" step="1">
+            <span class="input-group-text">sat/vB</span>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <ng-container *ngIf="results$ | async as results; else loading">
+
+    <!-- vSize -->
+    <div class="row justify-content-center mt-4 mb-3">
+      <div class="col-auto text-center">
+        <div class="text-muted small" i18n="utxo-spending.estimated-size">Estimated transaction size</div>
+        <div class="vsize-value">{{ results.vsize | number }} <span class="vsize-unit">vBytes</span></div>
+      </div>
+    </div>
+
+    <!-- Fee widget -->
+    <div class="row justify-content-center mb-2 ">
+      <div class="col-12 col-md-10 col-lg-8 fee-widget-row">
+
+        <!-- Color bar -->
+        <div class="fee-bar-row">
+          <div class="fee-progress-bar" [style.background]="noPriority">
+            <span class="fee-label" i18n="fees-box.no-priority">No Priority</span>
+          </div>
+          <div class="bar-gap"></div>
+          <div class="fee-progress-bar priority" [class.has-custom-sibling]="results.custom" [style.background]="gradient">
+            <span class="fee-label" i18n="fees-box.low-priority">Low Priority</span>
+            <span class="fee-label" i18n="fees-box.medium-priority">Medium Priority</span>
+            <span class="fee-label" i18n="fees-box.high-priority">High Priority</span>
+          </div>
+          <ng-container *ngIf="results.custom">
+            <div class="bar-gap"></div>
+            <div class="fee-progress-bar custom-bar">
+              <span class="fee-label" i18n="utxo-spending.custom">Custom</span>
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Cost items: sats → fiat → fee rate -->
+        <div class="fee-estimation-container">
+
+          <div class="item">
+            <div class="card-text">
+              <div class="sats-amount">{{ results.economy.totalSats | number }} Sats</div>
+              <span class="fiat-amount"><app-fiat [value]="results.economy.totalSats"></app-fiat></span>
+              <span class="fee-rate-label">{{ results.economy.feeRate | number:'1.0-1' }} sat/vB</span>
+            </div>
+          </div>
+
+          <div class="item-gap"></div>
+
+          <div class="item">
+            <div class="card-text">
+              <div class="sats-amount">{{ results.hour.totalSats | number }} Sats</div>
+              <span class="fiat-amount"><app-fiat [value]="results.hour.totalSats"></app-fiat></span>
+              <span class="fee-rate-label">{{ results.hour.feeRate | number:'1.0-1' }} sat/vB</span>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="card-text">
+              <div class="sats-amount">{{ results.halfHour.totalSats | number }} Sats</div>
+              <span class="fiat-amount"><app-fiat [value]="results.halfHour.totalSats"></app-fiat></span>
+              <span class="fee-rate-label">{{ results.halfHour.feeRate | number:'1.0-1' }} sat/vB</span>
+            </div>
+          </div>
+
+          <div class="item">
+            <div class="card-text">
+              <div class="sats-amount">{{ results.fastest.totalSats | number }} Sats</div>
+              <span class="fiat-amount"><app-fiat [value]="results.fastest.totalSats"></app-fiat></span>
+              <span class="fee-rate-label">{{ results.fastest.feeRate | number:'1.0-1' }} sat/vB</span>
+            </div>
+          </div>
+
+          <ng-container *ngIf="results.custom">
+            <div class="item-gap-custom"></div>
+            <div class="item item-custom">
+              <div class="card-text">
+                <div class="sats-amount">{{ results.custom.totalSats | number }} Sats</div>
+                <span class="fiat-amount"><app-fiat [value]="results.custom.totalSats"></app-fiat></span>
+                <span class="fee-rate-label">{{ results.custom.feeRate | number:'1.0-1' }} sat/vB</span>
+              </div>
+            </div>
+          </ng-container>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparative analysis -->
+    <div class="row justify-content-center" *ngIf="results.custom">
+      <div class="col-12 col-md-10 col-lg-8">
+        <div class="comparison-card" [ngClass]="results.delta > 0 ? 'card-wait' : 'card-save'">
+          <h5 class="comparison-title mb-3" i18n="utxo-spending.comparison-title">Consolidation Analysis</h5>
+
+          <div class="row text-center g-3 mb-3">
+            <div class="col-6">
+              <div class="comparison-item">
+                <div class="comparison-label text-muted small" i18n="utxo-spending.consolidate-now">Consolidate NOW</div>
+                <div class="comparison-sats">{{ results.consolidationNow | number }} sats</div>
+                <div class="comparison-fiat"><app-fiat [value]="results.consolidationNow"></app-fiat></div>
+                <div class="comparison-note small text-muted">at {{ results.fastest.feeRate | number:'1.0-1' }} sat/vB (fastest)</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="comparison-item">
+                <div class="comparison-label text-muted small" i18n="utxo-spending.input-cost-future">Input cost in FUTURE tx</div>
+                <div class="comparison-sats">{{ results.inputCostFuture | number }} sats</div>
+                <div class="comparison-fiat"><app-fiat [value]="results.inputCostFuture"></app-fiat></div>
+                <div class="comparison-note small text-muted">at {{ form.get('futureFeeRate').value }} sat/vB</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="delta-section text-center">
+            <ng-container *ngIf="results.delta < 0; else waitIsSmarter">
+              <div class="delta-label save" i18n="utxo-spending.save-by-consolidating">You save by consolidating now</div>
+              <div class="delta-value save">{{ -results.delta | number }} sats</div>
+              <div class="delta-fiat save"><app-fiat [value]="-results.delta"></app-fiat></div>
+              <div class="delta-note small text-muted mt-1" i18n="utxo-spending.consolidate-advice">
+                Consolidating now is cheaper. Each future spend will cost more.
+              </div>
+            </ng-container>
+            <ng-template #waitIsSmarter>
+              <ng-container *ngIf="results.delta > 0; else breakEven">
+                <div class="delta-label wait" i18n="utxo-spending.wait-smarter">You would be saving this amount of sats</div>
+                <div class="delta-value wait">{{ results.delta | number }} sats</div>
+                <div class="delta-fiat wait"><app-fiat [value]="results.delta"></app-fiat></div>
+                <div class="delta-note small text-muted mt-1" i18n="utxo-spending.wait-advice">
+                  You would overpay consolidating now. Wait for lower fees.
+                </div>
+              </ng-container>
+              <ng-template #breakEven>
+                <div class="delta-label text-muted" i18n="utxo-spending.break-even">Break even — same cost either way</div>
+              </ng-template>
+            </ng-template>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <ng-template #loading>
+    <div class="row justify-content-center mt-4">
+      <div class="col-12 col-md-10 col-lg-8">
+        <div class="fee-bar-row">
+          <div class="fee-progress-bar" [style.background]="noPriority">
+            <span class="fee-label" i18n="fees-box.no-priority">No Priority</span>
+          </div>
+          <div class="bar-gap"></div>
+          <div class="fee-progress-bar priority" [style.background]="gradient">
+            <span class="fee-label" i18n="fees-box.low-priority">Low Priority</span>
+            <span class="fee-label" i18n="fees-box.medium-priority">Medium Priority</span>
+            <span class="fee-label" i18n="fees-box.high-priority">High Priority</span>
+          </div>
+        </div>
+        <div class="fee-estimation-container loading-container">
+          <div class="item"><div class="card-text"><div class="skeleton-loader"></div><div class="skeleton-loader"></div></div></div>
+          <div class="item-gap"></div>
+          <div class="item"><div class="card-text"><div class="skeleton-loader"></div><div class="skeleton-loader"></div></div></div>
+          <div class="item"><div class="card-text"><div class="skeleton-loader"></div><div class="skeleton-loader"></div></div></div>
+          <div class="item"><div class="card-text"><div class="skeleton-loader"></div><div class="skeleton-loader"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
+</div>
