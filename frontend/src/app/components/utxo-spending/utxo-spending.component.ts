@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { combineLatest, Observable, Subscription } from 'rxjs';
-import { map, startWith, tap } from 'rxjs/operators';
+import { map, startWith, tap, take } from 'rxjs/operators';
 import { StateService } from '@app/services/state.service';
 import { WebsocketService } from '@app/services/websocket.service';
 import { ThemeService } from '@app/services/theme.service';
@@ -13,6 +14,29 @@ const INPUT_SIZES: Record<string, number> = {
   p2tr: 57.5,
   p2sh_p2wpkh: 91,
   p2pkh: 148,
+};
+
+const TYPE_ALIASES: Record<string, string> = {
+  // p2pkh
+  p2pkh: 'p2pkh',
+  legacy: 'p2pkh',
+  // p2sh_p2wpkh
+  p2sh_p2wpkh: 'p2sh_p2wpkh',
+  'p2sh-p2wpkh': 'p2sh_p2wpkh',
+  'nested-segwit': 'p2sh_p2wpkh',
+  nested_segwit: 'p2sh_p2wpkh',
+  p2sh: 'p2sh_p2wpkh',
+  // p2wpkh
+  p2wpkh: 'p2wpkh',
+  bech32: 'p2wpkh',
+  segwit: 'p2wpkh',
+  'native-segwit': 'p2wpkh',
+  native_segwit: 'p2wpkh',
+  v0_p2wpkh: 'p2wpkh',
+  // p2tr
+  p2tr: 'p2tr',
+  taproot: 'p2tr',
+  v1_p2tr: 'p2tr',
 };
 
 const OUTPUT_SIZES: Record<string, number> = {
@@ -67,6 +91,7 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
     private websocketService: WebsocketService,
     private themeService: ThemeService,
     private cd: ChangeDetectorRef,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
@@ -78,6 +103,23 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
       numOutputs:    [1, [Validators.required, Validators.min(1)]],
       outputType:    ['p2wpkh'],
       futureFeeRate: [1, [Validators.min(1), Validators.max(1000)]],
+    });
+
+    this.route.queryParamMap.pipe(take(1)).subscribe(params => {
+      const utxos = params.get('utxos');
+      const type = params.get('type');
+      if (utxos) {
+        const count = parseInt(utxos, 10);
+        if (!isNaN(count) && count >= 1) {
+          this.form.patchValue({ numInputs: count });
+        }
+      }
+      if (type) {
+        const canonical = TYPE_ALIASES[type.toLowerCase()];
+        if (canonical) {
+          this.form.patchValue({ inputType: canonical });
+        }
+      }
     });
 
     this.themeSubscription = this.themeService.themeState$.subscribe((state) => {

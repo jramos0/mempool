@@ -85,6 +85,8 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
 
     // ── Past data series ───────────────────────────────────────────────────────
     const pastData: [number, number][] = visibleData.map(d => [d.timestamp, d.median]);
+    // Bridge: extend historical line to "now" at currentRate so it meets the future line
+    pastData.push([now, currentRate]);
     const threshBase: [number, number][] = visibleData.map(d => [d.timestamp, Math.max(0, futureRate)]);
     const threshExcess: [number, number][] = visibleData.map(d => [
       d.timestamp,
@@ -322,13 +324,13 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           z: 5,
         } as any,
 
-        // ── 6. Future projection line (solid, same weight as historical) ──────────
+        // ── 6. Future projection line (solid, continuous with historical) ─────────
         {
           name: 'futureLine',
           type: 'line',
           data: futureData,
           yAxisIndex: 0,
-          lineStyle: { color: futureColor, width: 1.5, type: 'dashed' },
+          lineStyle: { color: futureColor, width: 1.5, type: 'solid' },
           areaStyle: { color: 'transparent' },
           symbol: 'none',
           z: 6,
