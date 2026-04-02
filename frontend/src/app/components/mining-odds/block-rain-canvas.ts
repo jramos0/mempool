@@ -1,5 +1,7 @@
 import { EventEmitter } from '@angular/core';
 
+export type BlockType = 'network' | 'user';
+
 export interface RainBlock {
   x: number;
   y: number;
@@ -9,6 +11,8 @@ export interface RainBlock {
   opacity: number;
   isWinner: boolean;
   flash: number;
+  type: BlockType;
+  trail: { y: number }[];
 }
 
 export interface BlockFoundEvent {
@@ -36,18 +40,24 @@ export class BlockRainCanvas {
 
   // Animation
   private BASE_SPEED = 1.2;
+  private USER_SPEED_MULT = 1.8;
   private speedVariance = 0.7;
   private columnSpeeds: number[] = [];
   private columnLastSpawnY: number[] = [];
 
-  // Hashrate-driven spawn accumulator
-  private spawnAccumulator = 0;
+  // Spawn accumulators — one per particle type
+  private spawnAccumulatorNetwork = 0;
+  private spawnAccumulatorUser = 0;
+
+  // Mode
+  private realisticMode = false;
+  private avgBlockTimeSec = 600;
 
   // Mining odds
   private networkHashrateHs = 0;
   private userHashrateHs = 0;
 
-  // Counters
+  // Counters (user hashes only)
   totalBlocks = 0;
   foundBlocks = 0;
 
@@ -55,13 +65,16 @@ export class BlockRainCanvas {
   // because readCSSColors() always runs before the first draw.
   private c = {
     bg: '#0d1117',
-    blockDark1: '#191c27',  // --block-side
-    blockDark2: '#232838',  // --block-top
-    blockMid: '#272f4e',    // --secondary
-    blockBlue: '#007cfa',   // --primary (celeste)
-    blockGreen: '#83fd00',  // --green
-    winner: '#6225b2',      // --tertiary
-    winnerGlow: '#6225b2',  // --tertiary
+    blockDark1: '#191c27',
+    blockDark2: '#232838',
+    blockMid: '#272f4e',
+    blockBlue: '#007cfa',
+    blockGreen: '#83fd00',
+    winner: '#6225b2',
+    winnerGlow: '#6225b2',
+    networkMagenta: '#d946ef',
+    networkOrange: '#f97316',
+    networkRed: '#ef4444',
   };
 
   onBlockFound = new EventEmitter<{ x: number; y: number; blockNumber: number }>();
@@ -88,6 +101,9 @@ export class BlockRainCanvas {
     const primary   = get('--primary');
     const green     = get('--green');
     const tertiary  = get('--tertiary');
+    const red       = get('--red');
+    const orange    = get('--orange');
+    const pink      = get('--pink');
 
     if (bg)        this.c.bg         = bg;
     if (blockSide) this.c.blockDark1 = green;
@@ -99,6 +115,9 @@ export class BlockRainCanvas {
       this.c.winner     = tertiary;
       this.c.winnerGlow = tertiary;
     }
+    if (red)    this.c.networkRed     = red;
+    if (orange) this.c.networkOrange  = orange;
+    if (pink)   this.c.networkMagenta = pink;
   }
 
   setHashrate(hashesPerSecond: number): void {
@@ -109,6 +128,16 @@ export class BlockRainCanvas {
     this.networkHashrateHs = hashesPerSecond;
   }
 
+  setAvgBlockTime(seconds: number): void {
+    this.avgBlockTimeSec = seconds > 0 ? seconds : 600;
+  }
+
+  setRealisticMode(value: boolean): void {
+    this.realisticMode = value;
+    this.spawnAccumulatorNetwork = 0;
+    this.spawnAccumulatorUser = 0;
+  }
+
   get winProbability(): number {
     if (this.networkHashrateHs <= 0 || this.userHashrateHs <= 0) {
       return 1 / 50000;
@@ -116,27 +145,34 @@ export class BlockRainCanvas {
     return this.userHashrateHs / this.networkHashrateHs;
   }
 
-  private makeBlock(col: number, y: number): RainBlock {
-    const isWinner = Math.random() < this.winProbability;
+  // --- Spawn rates (circles/frame) ---
+
+  // Network density: always log-scaled — the background "ocean" of hashes, consistent in both modes
+  private get networkCirclesPerFrame(): number {
+    if (this.networkHashrateHs <= 0) return 0;
+    const log = Math.log10(Math.max(this.networkHashrateHs, 1));
+    return Math.max((log * 4.5) / 60, 0);
+  }
+
+  // User stars: always log-scaled for visual density consistency across both modes.
+  // The "realistic" difference is only in the win probability (handled in tickRealisticWinCheck).
+  private get userStarsPerFrame(): number {
+    if (this.userHashrateHs <= 0) return 0;
+    const log = Math.log10(Math.max(this.userHashrateHs, 1));
+    return Math.max((log * 1.2) / 60, 0);
+  }
+
+  // --- Block makers ---
+
+  private makeNetworkBlock(col: number, y: number): RainBlock {
     const roll = Math.random();
     let color: string;
-    if (isWinner) {
-      color = this.c.winner;
-    } else if (roll < 0.05) {
-      // 5% celeste brillante
-      color = this.c.blockBlue;
-    } else if (roll < 0.10) {
-      // 5% verde
-      color = this.c.blockGreen;
-    } else if (roll < 0.35) {
-      // 25% azul medio
-      color = this.c.blockMid;
-    } else if (roll < 0.65) {
-      // 30% block-top
-      color = this.c.blockDark2;
+    if (roll < 0.4) {
+      color = this.c.networkMagenta;
+    } else if (roll < 0.75) {
+      color = this.c.networkOrange;
     } else {
-      // 35% block-side (más oscuro)
-      color = this.c.blockDark1;
+      color = this.c.networkRed;
     }
     return {
       x: col * this.STEP,
@@ -144,9 +180,36 @@ export class BlockRainCanvas {
       col,
       speed: this.columnSpeeds[col],
       color,
-      opacity: isWinner ? 1.0 : color === this.c.blockDark1 ? 0.7 : 0.25 + Math.random() * 0.45,
+      opacity: 0.13 + Math.random() * 0.12,
+      isWinner: false,
+      flash: 0,
+      type: 'network',
+      trail: [],
+    };
+  }
+
+  private makeUserStar(col: number, y: number): RainBlock {
+    // In realistic mode winners are never decided per-star — tickRealisticWinCheck() handles that.
+    const isWinner = this.realisticMode ? false : Math.random() < this.winProbability;
+    let color: string;
+    if (isWinner) {
+      color = this.c.winner;
+    } else if (Math.random() < 0.5) {
+      color = this.c.blockBlue;
+    } else {
+      color = this.c.blockGreen;
+    }
+    return {
+      x: col * this.STEP,
+      y,
+      col,
+      speed: this.columnSpeeds[col] * this.USER_SPEED_MULT,
+      color,
+      opacity: isWinner ? 1.0 : 0.7 + Math.random() * 0.25,
       isWinner,
       flash: 0,
+      type: 'user',
+      trail: [],
     };
   }
 
@@ -188,7 +251,8 @@ export class BlockRainCanvas {
     }
 
     this.blocks = [];
-    this.spawnAccumulator = 0;
+    this.spawnAccumulatorNetwork = 0;
+    this.spawnAccumulatorUser = 0;
   }
 
   start(): void {
@@ -214,7 +278,8 @@ export class BlockRainCanvas {
     this.blockFoundEvents = [];
     this.totalBlocks = 0;
     this.foundBlocks = 0;
-    this.spawnAccumulator = 0;
+    this.spawnAccumulatorNetwork = 0;
+    this.spawnAccumulatorUser = 0;
     this.clearCanvas();
   }
 
@@ -224,7 +289,15 @@ export class BlockRainCanvas {
     this.blockFoundEvents = [];
     this.totalBlocks = 0;
     this.foundBlocks = 0;
-    this.spawnAccumulator = 0;
+    this.spawnAccumulatorNetwork = 0;
+    this.spawnAccumulatorUser = 0;
+  }
+
+  /** Resets only the found/total counters — animation and in-flight blocks continue uninterrupted. */
+  resetCounters(): void {
+    this.totalBlocks = 0;
+    this.foundBlocks = 0;
+    this.blockFoundEvents = [];
   }
 
   private clearCanvas(): void {
@@ -234,24 +307,8 @@ export class BlockRainCanvas {
     this.ctx.fillRect(0, 0, w, h);
   }
 
-  // Hashrate-driven spawn: each block = one hash attempt.
-  // Log10 scale so the visual stays manageable across H/s → EH/s range.
-  private get hashesPerFrame(): number {
-    if (this.userHashrateHs <= 0) return 0;
-    const log = Math.log10(Math.max(this.userHashrateHs, 1));
-    const blocksPerSec = log * 2.5;
-    return Math.max(blocksPerSec / 60, 0);
-  }
-
-  private spawnBlocks(): void {
-    if (this.COLS <= 0) return;
-
-    this.spawnAccumulator += this.hashesPerFrame;
-
-    const maxPerFrame = Math.min(Math.floor(this.spawnAccumulator), this.COLS);
-    this.spawnAccumulator -= maxPerFrame;
-
-    for (let i = 0; i < maxPerFrame; i++) {
+  private spawnInColumns(count: number, maker: (col: number, y: number) => RainBlock): void {
+    for (let i = 0; i < count; i++) {
       let col = Math.floor(Math.random() * this.COLS);
       let attempts = 0;
       while (this.columnLastSpawnY[col] < this.STEP * 2 && attempts < this.COLS) {
@@ -259,10 +316,23 @@ export class BlockRainCanvas {
         attempts++;
       }
       if (attempts >= this.COLS) break;
-
-      this.blocks.push(this.makeBlock(col, -this.CELL_SIZE));
+      this.blocks.push(maker(col, -this.CELL_SIZE));
       this.columnLastSpawnY[col] = -this.CELL_SIZE;
     }
+  }
+
+  private spawnBlocks(): void {
+    if (this.COLS <= 0) return;
+
+    this.spawnAccumulatorNetwork += this.networkCirclesPerFrame;
+    const netCount = Math.min(Math.floor(this.spawnAccumulatorNetwork), this.COLS);
+    this.spawnAccumulatorNetwork -= netCount;
+    this.spawnInColumns(netCount, (col, y) => this.makeNetworkBlock(col, y));
+
+    this.spawnAccumulatorUser += this.userStarsPerFrame;
+    const userCount = Math.min(Math.floor(this.spawnAccumulatorUser), Math.ceil(this.COLS / 3));
+    this.spawnAccumulatorUser -= userCount;
+    this.spawnInColumns(userCount, (col, y) => this.makeUserStar(col, y));
 
     for (let col = 0; col < this.COLS; col++) {
       this.columnLastSpawnY[col] += this.columnSpeeds[col];
@@ -274,18 +344,54 @@ export class BlockRainCanvas {
 
     for (let i = this.blocks.length - 1; i >= 0; i--) {
       const block = this.blocks[i];
+
+      if (block.type === 'user' && block.isWinner) {
+        block.trail.unshift({ y: block.y });
+        if (block.trail.length > 5) block.trail.pop();
+      }
+
       block.y += block.speed;
 
       if (block.y > h + this.CELL_SIZE) {
-        this.totalBlocks++;
-        if (block.isWinner) {
-          this.foundBlocks++;
-          const visibleY = Math.min(block.y - block.speed, h - this.CELL_SIZE * 2);
-          this.triggerBlockFound(block.x, visibleY);
+        if (block.type === 'user') {
+          this.totalBlocks++;
+          if (block.isWinner) {
+            this.foundBlocks++;
+            const visibleY = Math.min(block.y - block.speed, h - this.CELL_SIZE * 2);
+            this.triggerBlockFound(block.x, visibleY);
+          }
         }
         this.blocks.splice(i, 1);
       }
     }
+  }
+
+  /**
+   * Realistic-mode only: one probability check per animation frame.
+   * Probability = (user/network) / (avgBlockTimeSec × 60fps)
+   * This means winners appear at wall-clock intervals matching the expected block time.
+   */
+  private tickRealisticWinCheck(): void {
+    if (!this.realisticMode || this.userHashrateHs <= 0 || this.networkHashrateHs <= 0) return;
+
+    const probPerFrame = (this.userHashrateHs / this.networkHashrateHs) / (this.avgBlockTimeSec * 60);
+    if (Math.random() >= probPerFrame) return;
+
+    // Pick a random column to materialise the winner star
+    const col = Math.floor(Math.random() * this.COLS);
+    const x = col * this.STEP;
+    const r = this.CELL_SIZE / 2;
+    // Start near the top so the falling animation is visible before exit
+    const y = r;
+
+    const star = this.makeUserStar(col, y);
+    star.isWinner = true;
+    star.color = this.c.winner;
+    star.opacity = 1.0;
+    this.blocks.push(star);
+
+    this.foundBlocks++;
+    this.triggerBlockFound(x, this.CELL_SIZE * 4);
   }
 
   private triggerBlockFound(x: number, y: number): void {
@@ -300,71 +406,124 @@ export class BlockRainCanvas {
   }
 
   private drawBlocks(): void {
-    const ctx = this.ctx;
+    // Network circles first (background layer), user stars on top
     for (const block of this.blocks) {
-      if (block.isWinner) {
-        this.drawWinnerBlock(block);
-      } else {
-        const r = this.CELL_SIZE / 2;
-        const cx = block.x + r;
-        const cy = block.y + r;
-        ctx.fillStyle = block.color;
-        ctx.globalAlpha = block.opacity;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fill();
+      if (block.type === 'network') {
+        this.drawNetworkCircle(block);
       }
     }
+    for (const block of this.blocks) {
+      if (block.type === 'user') {
+        this.drawUserStar(block);
+      }
+    }
+    this.ctx.globalAlpha = 1;
+  }
+
+  private drawNetworkCircle(block: RainBlock): void {
+    const ctx = this.ctx;
+    const r = this.CELL_SIZE / 2;
+    const cx = block.x + r;
+    const cy = block.y + r;
+    ctx.globalAlpha = block.opacity;
+    ctx.fillStyle = block.color;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
 
-  private drawWinnerBlock(block: RainBlock): void {
+  /** Draws a 4-pointed ✦ star polygon centered at (cx, cy). */
+  private traceStar(cx: number, cy: number, outerR: number, innerR: number): void {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * Math.PI / 4) - Math.PI / 2;
+      const r = i % 2 === 0 ? outerR : innerR;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  private drawUserStar(block: RainBlock): void {
+    if (block.isWinner) {
+      this.drawWinnerStar(block);
+      return;
+    }
+
+    // Non-winner user hashes: plain circle in user colors (blue/green)
+    const ctx = this.ctx;
+    const r = this.CELL_SIZE / 2;
+    const cx = block.x + r;
+    const cy = block.y + r;
+    ctx.globalAlpha = block.opacity;
+    ctx.fillStyle = block.color;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  private drawWinnerStar(block: RainBlock): void {
     const ctx = this.ctx;
     const { x, y } = block;
     const pulse = 0.6 + 0.4 * Math.sin(block.flash);
     block.flash += 0.12;
 
-    const cx = x + this.CELL_SIZE / 2;
-    const cy = y + this.CELL_SIZE / 2;
+    const r = this.CELL_SIZE / 2;
+    const cx = x + r;
+    const cy = y + r;
+    const outerR = r * 2.5;   // 2× bigger than before
+    const innerR = r * 0.55;
 
-    // Outermost soft halo via radial gradient
-    const haloR = this.CELL_SIZE * 3.5;
+    // Trail with glow
+    for (let t = 0; t < block.trail.length; t++) {
+      const trailCy = block.trail[t].y + r;
+      const trailOpacity = pulse * (1 - (t + 1) / (block.trail.length + 1)) * 0.7;
+      ctx.globalAlpha = trailOpacity;
+      ctx.fillStyle = this.c.winnerGlow;
+      ctx.shadowColor = this.c.winnerGlow;
+      ctx.shadowBlur = 14;
+      this.traceStar(cx, trailCy, outerR * (1 - t * 0.15), innerR);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    // Outermost soft halo
+    const haloR = this.CELL_SIZE * 7;
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, haloR);
     grad.addColorStop(0, this.c.winnerGlow);
     grad.addColorStop(1, 'transparent');
-    ctx.globalAlpha = pulse * 0.35;
+    ctx.globalAlpha = pulse * 0.45;
     ctx.fillStyle = grad;
     ctx.fillRect(cx - haloR, cy - haloR, haloR * 2, haloR * 2);
 
-    const r = this.CELL_SIZE / 2;
-
-    // Layered circle glow (outermost → inner)
+    // Layered star glow (outermost → inner)
     ctx.fillStyle = this.c.winnerGlow;
-    ctx.globalAlpha = pulse * 0.18;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 9, 0, Math.PI * 2);
+    ctx.globalAlpha = pulse * 0.22;
+    this.traceStar(cx, cy, outerR + 16, innerR + 5);
     ctx.fill();
 
-    ctx.globalAlpha = pulse * 0.35;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
+    ctx.globalAlpha = pulse * 0.42;
+    this.traceStar(cx, cy, outerR + 10, innerR + 3);
     ctx.fill();
 
-    ctx.globalAlpha = pulse * 0.55;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
+    ctx.globalAlpha = pulse * 0.65;
+    this.traceStar(cx, cy, outerR + 5, innerR + 1);
     ctx.fill();
 
-    // Core circle with canvas shadow for real blur glow
+    // Core star with canvas shadow blur
     ctx.shadowColor = this.c.winnerGlow;
-    ctx.shadowBlur = 18 * pulse;
+    ctx.shadowBlur = 30 * pulse;
     ctx.globalAlpha = pulse;
     ctx.fillStyle = this.c.winner;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    this.traceStar(cx, cy, outerR, innerR);
     ctx.fill();
 
-    // Bright specular highlight (small circle, top-left)
+    // Bright specular highlight
     ctx.shadowBlur = 0;
     ctx.globalAlpha = pulse * 0.7;
     ctx.fillStyle = '#9c95f7';
@@ -398,7 +557,6 @@ export class BlockRainCanvas {
       const cx = event.x + this.CELL_SIZE / 2;
       const cy = event.y + this.CELL_SIZE / 2;
 
-      // Ring 1 — fast expanding
       const r1 = this.CELL_SIZE + progress * maxDim * 0.6;
       ctx.beginPath();
       ctx.arc(cx, cy, r1, 0, Math.PI * 2);
@@ -407,7 +565,6 @@ export class BlockRainCanvas {
       ctx.lineWidth = 2 * (1 - progress);
       ctx.stroke();
 
-      // Ring 2 — delayed, slower
       if (progress > 0.1) {
         const p2 = (progress - 0.1) / 0.9;
         const r2 = this.CELL_SIZE + p2 * maxDim * 0.4;
@@ -418,7 +575,6 @@ export class BlockRainCanvas {
         ctx.stroke();
       }
 
-      // Screen flash
       if (elapsed < 200) {
         ctx.fillStyle = this.c.winner;
         ctx.globalAlpha = (1 - elapsed / 200) * 0.08;
@@ -433,6 +589,7 @@ export class BlockRainCanvas {
     if (!this.running) return;
 
     this.clearCanvas();
+    this.tickRealisticWinCheck();
     this.spawnBlocks();
     this.updateBlocks();
     this.drawBlocks();

@@ -53,6 +53,8 @@ export class MiningOddsComponent implements OnInit, OnDestroy {
   units = HASHRATE_UNITS;
   miningMode: MiningMode = 'solo';
   showBlockFound = false;
+  realisticMode = false;
+  networkHashrateHs = 0;
 
   networkStats$: Observable<{ hashrate: number; timeAvg: number; difficulty: number }>;
   results$: Observable<{
@@ -212,23 +214,28 @@ export class MiningOddsComponent implements OnInit, OnDestroy {
     // Keep canvas probabilities in sync with hashrate/network data
     this.subscriptions.add(
       combineLatest([this.networkStats$, formValues$]).subscribe(([network, formVal]) => {
+        this.networkHashrateHs = network.hashrate;
         if (this.blockRain) {
           const unitMultiplier = HASHRATE_UNITS[formVal.unit]?.multiplier ?? 1e12;
           const userHashrateHs = parseFloat(formVal.hashrate) * unitMultiplier;
-          this.blockRain.setHashrate(userHashrateHs > 0 ? userHashrateHs : 0);
+          const effectiveHashrate = (userHashrateHs > 0 && userHashrateHs <= network.hashrate)
+            ? userHashrateHs : 0;
+          this.blockRain.setHashrate(effectiveHashrate);
           this.blockRain.setNetworkHashrate(network.hashrate);
+          this.blockRain.setAvgBlockTime(network.timeAvg / 1000);
         }
       })
     );
 
-    // Reset in-flight blocks and counters whenever the user changes hashrate/unit
+    // Reset found/total counters when hashrate changes so stats reflect the new value
     this.subscriptions.add(
       this.form.valueChanges.subscribe(() => {
         if (this.blockRain) {
-          this.blockRain.resetStats();
+          this.blockRain.resetCounters();
         }
       })
     );
+
   }
 
   ngOnDestroy(): void {
@@ -297,6 +304,22 @@ export class MiningOddsComponent implements OnInit, OnDestroy {
       this.blockRain.destroy();
       this.blockRain = null;
     }
+  }
+
+  onRealisticModeToggle(): void {
+    this.realisticMode = !this.realisticMode;
+    if (this.blockRain) {
+      this.blockRain.setRealisticMode(this.realisticMode);
+    }
+  }
+
+  get hashrateExceedsNetwork(): boolean {
+    if (!this.networkHashrateHs) return false;
+    const formVal = this.form?.value;
+    if (!formVal) return false;
+    const unitMultiplier = HASHRATE_UNITS[formVal.unit]?.multiplier ?? 1e12;
+    const userHashrateHs = parseFloat(formVal.hashrate) * unitMultiplier;
+    return userHashrateHs > this.networkHashrateHs;
   }
 
   get rainFoundBlocks(): number {

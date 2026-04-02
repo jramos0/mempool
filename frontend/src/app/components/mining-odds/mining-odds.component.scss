@@ -63,6 +63,13 @@
   color: var(--fg);
 }
 
+.hashrate-error {
+  font-size: 11px;
+  color: var(--red, #ef4444);
+  margin-top: 4px;
+  text-align: center;
+}
+
 .mining-odds-form {
   .unit-select {
     max-width: 110px;
@@ -75,6 +82,11 @@
     max-width: 120px;
     background-color: var(--block-side);
     color: var(--fg);
+  }
+
+  .hashrate-invalid .form-control,
+  .hashrate-invalid .unit-select {
+    border-color: var(--red, #ef4444);
   }
 }
 
@@ -196,6 +208,61 @@
   }
 }
 
+
+.rain-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-right: 4px;
+}
+
+.realistic-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.45);
+  transition: color 0.2s;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  input[type='checkbox'] {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background 0.2s;
+
+    &:checked {
+      background: var(--tertiary);
+      border-color: var(--tertiary);
+
+      &::after {
+        content: '';
+        position: absolute;
+        left: 3px;
+        top: 1px;
+        width: 5px;
+        height: 8px;
+        border: 2px solid #fff;
+        border-top: none;
+        border-left: none;
+        transform: rotate(45deg);
+      }
+    }
+  }
+}
 
 @media (max-width: 767.98px) {
   .expected-time-value {

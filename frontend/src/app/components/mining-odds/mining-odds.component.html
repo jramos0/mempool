@@ -17,7 +17,7 @@
       <div class="col-auto text-center px-3">
         <form [formGroup]="form" class="mining-odds-form">
           <div class="stat-label" i18n="mining-odds.your-hashrate">Your Hashrate</div>
-          <div class="input-group input-group-sm">
+          <div class="input-group input-group-sm" [class.hashrate-invalid]="hashrateExceedsNetwork">
             <input
               type="number"
               inputmode="decimal"
@@ -29,6 +29,9 @@
             <select class="form-select unit-select" formControlName="unit">
               <option *ngFor="let unit of units; let i = index" [value]="i">{{ unit.label }}</option>
             </select>
+          </div>
+          <div class="hashrate-error" *ngIf="hashrateExceedsNetwork" i18n="mining-odds.hashrate-exceeds-network">
+            Cannot exceed network hashrate
           </div>
         </form>
       </div>
@@ -91,6 +94,12 @@
                 <span class="block-found-sub">You mined a block!</span>
               </div>
             </div>
+          </div>
+          <div class="rain-controls">
+            <label class="realistic-toggle">
+              <input type="checkbox" [checked]="realisticMode" (change)="onRealisticModeToggle()">
+              <span i18n="mining-odds.realistic-time">Realistic time</span>
+            </label>
           </div>
         </div>
       </div>
