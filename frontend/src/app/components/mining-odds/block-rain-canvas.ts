@@ -305,9 +305,14 @@ export class BlockRainCanvas {
       if (block.isWinner) {
         this.drawWinnerBlock(block);
       } else {
+        const r = this.CELL_SIZE / 2;
+        const cx = block.x + r;
+        const cy = block.y + r;
         ctx.fillStyle = block.color;
         ctx.globalAlpha = block.opacity;
-        ctx.fillRect(block.x, block.y, this.CELL_SIZE, this.CELL_SIZE);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
     ctx.globalAlpha = 1;
@@ -331,30 +336,41 @@ export class BlockRainCanvas {
     ctx.fillStyle = grad;
     ctx.fillRect(cx - haloR, cy - haloR, haloR * 2, haloR * 2);
 
-    // Layered rect glow (outermost → inner)
+    const r = this.CELL_SIZE / 2;
+
+    // Layered circle glow (outermost → inner)
     ctx.fillStyle = this.c.winnerGlow;
     ctx.globalAlpha = pulse * 0.18;
-    ctx.fillRect(x - 9, y - 9, this.CELL_SIZE + 18, this.CELL_SIZE + 18);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 9, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.globalAlpha = pulse * 0.35;
-    ctx.fillRect(x - 5, y - 5, this.CELL_SIZE + 10, this.CELL_SIZE + 10);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.globalAlpha = pulse * 0.55;
-    ctx.fillRect(x - 2, y - 2, this.CELL_SIZE + 4, this.CELL_SIZE + 4);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 2, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Core block with canvas shadow for real blur glow
+    // Core circle with canvas shadow for real blur glow
     ctx.shadowColor = this.c.winnerGlow;
     ctx.shadowBlur = 18 * pulse;
     ctx.globalAlpha = pulse;
     ctx.fillStyle = this.c.winner;
-    ctx.fillRect(x, y, this.CELL_SIZE, this.CELL_SIZE);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Bright white specular center 
+    // Bright specular highlight (small circle, top-left)
     ctx.shadowBlur = 0;
     ctx.globalAlpha = pulse * 0.7;
     ctx.fillStyle = '#9c95f7';
-    const hs = Math.max(2, Math.floor(this.CELL_SIZE / 3));
-    ctx.fillRect(x + 1, y + 1, hs, hs);
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.25, cy - r * 0.25, Math.max(1, r * 0.35), 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
