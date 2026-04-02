@@ -1,3 +1,64 @@
+// ── Two-column layout ─────────────────────────────────────────────────────────
+
+.utxo-main-layout {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+
+  @media (max-width: 991.98px) {
+    flex-direction: column;
+  }
+}
+
+.utxo-left-panel {
+  flex: 0 0 380px;
+  min-width: 0;
+
+  @media (max-width: 991.98px) {
+    flex: none;
+    width: 100%;
+  }
+}
+
+.utxo-right-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 320px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: var(--box-bg);
+
+  @media (max-width: 991.98px) {
+    width: 100%;
+  }
+}
+
+// ── Results summary box ───────────────────────────────────────────────────────
+
+.results-summary-box {
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-top: 1rem;
+}
+
+.vsize-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.fee-widget-inner {
+  background-color: rgb(29, 31, 49);
+  padding: 6px 6px 0;
+  border-radius: 0.25rem;
+}
+
+// ── Form ──────────────────────────────────────────────────────────────────────
+
 .utxo-form {
   .form-label {
     margin-bottom: 0.25rem;
@@ -51,12 +112,6 @@
 }
 
 // ── Fee widget ────────────────────────────────────────────────────────────────
-.fee-widget-row {
-  background-color: rgb(29, 31, 49);
-  padding-top: 6px;
-  margin-top: 1%;
-
-}
 
 
 .fee-bar-row {
@@ -259,10 +314,10 @@
 // ── Comparative analysis card ─────────────────────────────────────────────────
 
 .comparison-card {
-  border-radius: 0.75rem;
-  padding: 1.5rem; 
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
   border: 1px solid var(--skeleton-bg-light);
 
   &.card-save {
@@ -285,7 +340,7 @@
 
 .comparison-item {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--box-bg);
   border-radius: 0.5rem;
 }
 
@@ -293,7 +348,7 @@
   margin-bottom: 0.2rem;
   font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 .comparison-sats {

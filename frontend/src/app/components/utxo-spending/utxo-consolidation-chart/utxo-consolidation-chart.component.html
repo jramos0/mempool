@@ -3,24 +3,24 @@
   <!-- Custom legend -->
   <div class="chart-legend">
     <div class="legend-item">
-      <span class="legend-swatch swatch-solid" style="background:#E24B4A"></span>
-      <span i18n="utxo-spending.chart.input-cost">Input cost (future)</span>
+      <span class="legend-swatch swatch-gradient"></span>
+      <span i18n="utxo-spending.chart.historical">Historical median fee</span>
     </div>
     <div class="legend-item">
-      <span class="legend-swatch swatch-dashed" style="border-color:#5DCAA5"></span>
-      <span i18n="utxo-spending.chart.high-priority">High priority</span>
+      <span class="legend-swatch swatch-future" style="background:#E23B6C"></span>
+      <span i18n="utxo-spending.chart.future">Projected future fee</span>
     </div>
     <div class="legend-item">
-      <span class="legend-swatch swatch-dashed" style="border-color:#EF9F27"></span>
-      <span i18n="utxo-spending.chart.medium-priority">Medium priority</span>
+      <span class="legend-dot" style="background:#00E5BF"></span>
+      <span i18n="utxo-spending.chart.now">Now</span>
     </div>
     <div class="legend-item">
-      <span class="legend-swatch swatch-dashed" style="border-color:#85B7EB"></span>
-      <span i18n="utxo-spending.chart.low-priority">Low priority</span>
+      <span class="legend-dot" style="background:#E23B6C" [style.background]="futureDotColor"></span>
+      <span i18n="utxo-spending.chart.future-scenario">Future scenario</span>
     </div>
     <div class="legend-item">
-      <span class="legend-swatch swatch-area"></span>
-      <span i18n="utxo-spending.chart.savings">Savings zone</span>
+      <span class="legend-swatch swatch-area-magenta"></span>
+      <span i18n="utxo-spending.chart.threshold-exceeded">Fees exceeded your target</span>
     </div>
   </div>
 

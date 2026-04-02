@@ -1,5 +1,5 @@
 .consolidation-chart-wrap {
-  margin-top: 1.5rem;
+  padding: 1rem;
 }
 
 .chart {
@@ -28,26 +28,35 @@
   display: inline-block;
   flex-shrink: 0;
 
-  &.swatch-solid {
+  &.swatch-gradient {
     width: 22px;
     height: 3px;
     border-radius: 2px;
+    background: linear-gradient(to right, #6C5CE7, #A855F7, #00E5BF);
   }
 
-  &.swatch-dashed {
+  &.swatch-future {
     width: 22px;
-    height: 0;
-    border-top: 2px dashed currentColor;
-    background: transparent;
+    height: 3px;
+    border-radius: 2px;
+    opacity: 0.85;
   }
 
-  &.swatch-area {
+  &.swatch-area-magenta {
     width: 14px;
     height: 10px;
     border-radius: 2px;
-    background: rgba(93, 202, 165, 0.25);
-    border: 1px solid rgba(93, 202, 165, 0.5);
+    background: rgba(226, 59, 108, 0.25);
+    border: 1px solid rgba(226, 59, 108, 0.5);
   }
+}
+
+.legend-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
 }
 
 @media (max-width: 575.98px) {
