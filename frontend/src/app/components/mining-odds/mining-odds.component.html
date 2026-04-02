@@ -1,26 +1,57 @@
 <div class="container-xl">
 
-  <div class="text-center mb-4">
-    <h2 i18n="mining-odds.title">Mining Odds</h2>
-    <p class="text-secondary" i18n="mining-odds.subtitle">
-      Estimate your mining probability or expected earnings based on your hashrate.
-    </p>
-  </div>
-
-  <!-- Mode toggle -->
   <div class="row justify-content-center mb-4">
     <div class="col-auto">
       <div class="mode-toggle">
-        <button class="mode-btn" [class.active]="miningMode === 'solo'" (click)="setMode('solo')" i18n="mining-odds.solo-tab">Solo Mining</button>
+        <button class="mode-btn" [class.active]="miningMode === 'solo'" (click)="setMode('solo')" i18n="mining-odds.solo-tab">Solo Mining Odds</button>
         <button class="mode-btn" [class.active]="miningMode === 'pool'" (click)="setMode('pool')" i18n="mining-odds.pool-tab">Pool Mining (FPPS)</button>
       </div>
     </div>
   </div>
 
+
   <ng-container *ngIf="(networkStats$ | async) as network; else loading">
 
     <!-- Network stats bar -->
     <div class="network-stats-bar row justify-content-center mb-4">
+      <div class="col-auto text-center px-3">
+        <form [formGroup]="form" class="mining-odds-form">
+          <div class="stat-label" i18n="mining-odds.your-hashrate">Your Hashrate</div>
+          <div class="input-group input-group-sm">
+            <input
+              type="number"
+              inputmode="decimal"
+              class="form-control"
+              formControlName="hashrate"
+              min="0"
+              placeholder="0"
+            >
+            <select class="form-select unit-select" formControlName="unit">
+              <option *ngFor="let unit of units; let i = index" [value]="i">{{ unit.label }}</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <ng-container *ngIf="miningMode === 'pool'">
+        <div class="col-auto text-center px-3">
+          <form [formGroup]="form" class="mining-odds-form">
+            <div class="stat-label" i18n="mining-odds.pool-fee">Pool Fee (%)</div>
+            <div class="input-group input-group-sm">
+              <input
+                type="number"
+                inputmode="decimal"
+                class="form-control"
+                formControlName="poolFee"
+                min="0"
+                max="100"
+                step="0.1"
+                placeholder="2"
+              >
+              <span class="input-group-text">%</span>
+            </div>
+          </form>
+        </div>
+      </ng-container>
       <div class="col-auto text-center px-3">
         <div class="stat-label" i18n="mining-odds.network-hashrate">Network Hashrate</div>
         <div class="stat-value">{{ formatHashrate(network.hashrate) }}</div>
@@ -31,90 +62,40 @@
       </div>
     </div>
 
-    <!-- Hashrate input -->
+    <!-- Block Rain Canvas — shown immediately in solo mode, before any network data -->
+  <ng-container *ngIf="miningMode === 'solo'">
     <div class="row justify-content-center mb-4">
-      <form [formGroup]="form" class="mining-odds-form">
-        <label class="form-label" i18n="mining-odds.your-hashrate">Your Hashrate</label>
-        <div class="input-group input-group-lg mb-3">
-          <input
-            type="number"
-            inputmode="decimal"
-            class="form-control"
-            formControlName="hashrate"
-            min="0"
-            placeholder="0"
-          >
-          <select class="form-select unit-select" formControlName="unit">
-            <option *ngFor="let unit of units; let i = index" [value]="i">{{ unit.label }}</option>
-          </select>
-        </div>
-
-        <!-- Pool fee input (only in pool mode) -->
-        <ng-container *ngIf="miningMode === 'pool'">
-          <label class="form-label" i18n="mining-odds.pool-fee">Pool Fee (%)</label>
-          <div class="input-group input-group-lg">
-            <input
-              type="number"
-              inputmode="decimal"
-              class="form-control"
-              formControlName="poolFee"
-              min="0"
-              max="100"
-              step="0.1"
-              placeholder="2"
-            >
-            <span class="input-group-text">%</span>
+      <div class="col-12">
+        <div class="block-rain-wrapper">
+          <div class="block-rain-container">
+            <canvas #blockRainCanvas></canvas>
+            <div class="rain-overlay-stats">
+              <ng-container *ngIf="(results$ | async) as results">
+                <div class="rain-stat">
+                  <span class="rain-stat-label" i18n="mining-odds.expected-time-short">Expected Time</span>
+                  <span class="rain-stat-value rain-stat-value--sm">{{ formatExpectedTime(results.expectedTime) }}</span>
+                </div>
+              </ng-container>
+              <div class="rain-stat">
+                <span class="rain-stat-label">Found Blocks</span>
+                <span class="rain-stat-value">{{ rainFoundBlocks }}</span>
+              </div>
+              <div class="rain-stat">
+                <span class="rain-stat-label">Chance</span>
+                <span class="rain-stat-value">1 in {{ rainChanceDisplay }}</span>
+              </div>
+            </div>
+            <div class="block-found-overlay" [class.active]="showBlockFound">
+              <div class="block-found-content">
+                <span class="block-found-text">BLOCK FOUND</span>
+                <span class="block-found-sub">You mined a block!</span>
+              </div>
+            </div>
           </div>
-        </ng-container>
-      </form>
+        </div>
+      </div>
     </div>
-
-    <!-- ============ SOLO MINING RESULTS ============ -->
-    <ng-container *ngIf="miningMode === 'solo'">
-      <ng-container *ngIf="(results$ | async) as results; else noInput">
-
-        <!-- Expected time + Chance per block -->
-        <div class="row justify-content-center gap-3 mb-4">
-          <div class="col-auto text-center stat-card">
-            <div class="stat-label" i18n="mining-odds.expected-time">Expected time to find a block</div>
-            <div class="expected-time-value">{{ formatExpectedTime(results.expectedTime) }}</div>
-          </div>
-          <div class="col-auto text-center stat-card">
-            <div class="stat-label" i18n="mining-odds.chance-per-block">Chance per block</div>
-            <div class="expected-time-value">1 in <span class="accent-number">{{ formatOddsNumber(results.oddsPerBlock) }}</span></div>
-          </div>
-        </div>
-
-        <div class="row justify-content-center mb-3">
-          <div class="col-auto small text-center text-secondary" i18n="mining-odds.solo-only">
-            Solo mining only &mdash; does not account for pool fees or luck
-          </div>
-        </div>
-
-        <!-- Odds table -->
-        <div class="row justify-content-center">
-            <table class="table odds-table mx-auto">
-              <thead>
-                <tr>
-                  <th i18n="mining-odds.col-period">In</th>
-                  <th i18n="mining-odds.col-odds">Chance of finding a block</th>
-                  <th class="d-none d-md-table-cell" i18n="mining-odds.col-equivalent">Comparable to…</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let row of results.oddsRows">
-                  <td class="period-cell">{{ row.period }}</td>
-                  <td [class.odds-good]="row.probability > 0.5" [class.odds-fair]="row.probability > 0.01 && row.probability <= 0.5">
-                    1 in <span class="accent-number">{{ formatOddsNumber(row.oddsOneIn) }}</span>
-                  </td>
-                  <td class="d-none d-md-table-cell">{{ row.equivalent }}</td>
-                </tr>
-              </tbody>
-            </table>
-        </div>
-
-      </ng-container>
-    </ng-container>
+  </ng-container>
 
     <!-- ============ POOL MINING (FPPS) RESULTS ============ -->
     <ng-container *ngIf="miningMode === 'pool'">

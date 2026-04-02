@@ -1,19 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
-import { combineLatest, Observable } from 'rxjs';
-import { map, startWith, switchMap } from 'rxjs/operators';
+import { combineLatest, Observable, Subscription } from 'rxjs';
+import { map, startWith } from 'rxjs/operators';
 import { StateService } from '@app/services/state.service';
 import { MiningService } from '@app/services/mining.service';
 import { ApiService } from '@app/services/api.service';
 import { DifficultyAdjustment, RewardStats } from '@interfaces/node-api.interface';
-
-export interface OddsRow {
-  period: string;
-  blocks: number;
-  probability: number;
-  oddsOneIn: number;
-  equivalent: string;
-}
+import { BlockRainCanvas } from './block-rain-canvas';
 
 export interface PoolEarningsRow {
   period: string;
@@ -36,30 +29,6 @@ const HASHRATE_UNITS = [
 
 const DEFAULT_UNIT_INDEX = 4; // TH/s
 
-// Static fun equivalents keyed by rough order-of-magnitude of "1 in X"
-// We display the one whose threshold is closest to the actual odds
-const EQUIVALENTS: { threshold: number; text: string }[] = [
-  { threshold: 1,          text: 'Certain' },
-  { threshold: 10,         text: 'Very likely' },
-  { threshold: 100,        text: 'Likely' },
-  { threshold: 1_000,      text: 'Coin flip, roughly' },
-  { threshold: 10_000,     text: 'Rolling a 10,000-sided die' },
-  { threshold: 100_000,    text: 'Being struck by lightning (lifetime)' },
-  { threshold: 1_000_000,  text: 'Winning a national lottery' },
-  { threshold: 10_000_000, text: 'Winning the Powerball jackpot' },
-  { threshold: 1e9,        text: 'Flipping heads 30 times in a row' },
-  { threshold: 1e12,       text: 'Flipping heads 40 times in a row' },
-  { threshold: Infinity,   text: 'Astronomically unlikely' },
-];
-
-function getEquivalent(oddsOneIn: number): string {
-  for (let i = 0; i < EQUIVALENTS.length - 1; i++) {
-    if (oddsOneIn < EQUIVALENTS[i + 1].threshold) {
-      return EQUIVALENTS[i].text;
-    }
-  }
-  return EQUIVALENTS[EQUIVALENTS.length - 1].text;
-}
 
 @Component({
   selector: 'app-mining-odds',
@@ -68,14 +37,25 @@ function getEquivalent(oddsOneIn: number): string {
   standalone: false,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MiningOddsComponent implements OnInit {
+export class MiningOddsComponent implements OnInit, OnDestroy {
+  @ViewChild('blockRainCanvas', { static: false })
+  set blockRainCanvasRef(ref: ElementRef<HTMLCanvasElement> | undefined) {
+    if (ref && !this.blockRain) {
+      this._canvasRef = ref;
+      setTimeout(() => this.initCanvas(), 0);
+    } else if (!ref && this.blockRain) {
+      this.destroyCanvas();
+    }
+  }
+  private _canvasRef: ElementRef<HTMLCanvasElement> | undefined;
+
   form: FormGroup;
   units = HASHRATE_UNITS;
   miningMode: MiningMode = 'solo';
+  showBlockFound = false;
 
   networkStats$: Observable<{ hashrate: number; timeAvg: number; difficulty: number }>;
   results$: Observable<{
-    oddsRows: OddsRow[];
     expectedTime: number | null;
     userHashrateHs: number;
     oddsPerBlock: number;
@@ -90,15 +70,24 @@ export class MiningOddsComponent implements OnInit {
     userHashrateHs: number;
   } | null>;
 
+  private blockRain: BlockRainCanvas | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private blockFoundTimeout: any;
+  private statsInterval: any;
+  private subscriptions = new Subscription();
+
   constructor(
     private formBuilder: FormBuilder,
     private stateService: StateService,
     private miningService: MiningService,
     private apiService: ApiService,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone,
   ) {}
 
   setMode(mode: MiningMode): void {
     this.miningMode = mode;
+    // Canvas init/destroy is handled by the ViewChild setter reacting to *ngIf changes
   }
 
   ngOnInit(): void {
@@ -138,30 +127,14 @@ export class MiningOddsComponent implements OnInit {
           return null;
         }
 
+        // Update canvas with current values
+        if (this.blockRain) {
+          this.blockRain.setHashrate(userHashrateHs);
+          this.blockRain.setNetworkHashrate(network.hashrate);
+        }
+
         const ratio = userHashrateHs / network.hashrate;
         const avgBlockMs = network.timeAvg; // milliseconds
-
-        const periods: { label: string; ms: number }[] = [
-          { label: '1 hour',     ms: 60 * 60 * 1000 },
-          { label: '1 day',      ms: 24 * 60 * 60 * 1000 },
-          { label: '1 week',     ms: 7 * 24 * 60 * 60 * 1000 },
-          { label: '1 month',    ms: 30 * 24 * 60 * 60 * 1000 },
-          { label: '1 year',     ms: 365 * 24 * 60 * 60 * 1000 },
-          { label: '10 years',   ms: 10 * 365 * 24 * 60 * 60 * 1000 },
-        ];
-
-        const oddsRows: OddsRow[] = periods.map(p => {
-          const n = p.ms / avgBlockMs; // expected number of blocks in this period
-          const prob = 1 - Math.pow(1 - ratio, n);
-          const oddsOneIn = prob > 0 ? Math.round(1 / prob) : Infinity;
-          return {
-            period: p.label,
-            blocks: Math.round(n),
-            probability: prob,
-            oddsOneIn,
-            equivalent: getEquivalent(oddsOneIn),
-          };
-        });
 
         // Expected time in seconds
         const expectedTime = avgBlockMs / ratio / 1000;
@@ -169,7 +142,7 @@ export class MiningOddsComponent implements OnInit {
         // Per-block probability expressed as "1 in X"
         const oddsPerBlock = Math.round(1 / ratio);
 
-        return { oddsRows, expectedTime, userHashrateHs, oddsPerBlock };
+        return { expectedTime, userHashrateHs, oddsPerBlock };
       })
     );
 
@@ -235,6 +208,106 @@ export class MiningOddsComponent implements OnInit {
         };
       })
     );
+
+    // Keep canvas probabilities in sync with hashrate/network data
+    this.subscriptions.add(
+      combineLatest([this.networkStats$, formValues$]).subscribe(([network, formVal]) => {
+        if (this.blockRain) {
+          const unitMultiplier = HASHRATE_UNITS[formVal.unit]?.multiplier ?? 1e12;
+          const userHashrateHs = parseFloat(formVal.hashrate) * unitMultiplier;
+          this.blockRain.setHashrate(userHashrateHs > 0 ? userHashrateHs : 0);
+          this.blockRain.setNetworkHashrate(network.hashrate);
+        }
+      })
+    );
+
+    // Reset in-flight blocks and counters whenever the user changes hashrate/unit
+    this.subscriptions.add(
+      this.form.valueChanges.subscribe(() => {
+        if (this.blockRain) {
+          this.blockRain.resetStats();
+        }
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.destroyCanvas();
+    this.subscriptions.unsubscribe();
+    if (this.blockFoundTimeout) {
+      clearTimeout(this.blockFoundTimeout);
+    }
+  }
+
+  private initCanvas(): void {
+    if (this.blockRain || !this._canvasRef) return;
+
+    const canvas = this._canvasRef.nativeElement;
+    const container = canvas.parentElement;
+    if (!container) return;
+
+    // Create canvas instance — resize() is NOT called in constructor,
+    // ResizeObserver fires immediately with the real container dimensions.
+    this.blockRain = new BlockRainCanvas(canvas);
+
+    this.subscriptions.add(
+      this.blockRain.onBlockFound.subscribe(() => {
+        this.showBlockFound = true;
+        this.cdr.detectChanges();
+        if (this.blockFoundTimeout) {
+          clearTimeout(this.blockFoundTimeout);
+        }
+        this.blockFoundTimeout = setTimeout(() => {
+          this.showBlockFound = false;
+          this.cdr.detectChanges();
+        }, 2000);
+      })
+    );
+
+    // ResizeObserver fires immediately with the real rendered size,
+    // then again on every subsequent resize.
+    this.ngZone.runOutsideAngular(() => {
+      this.resizeObserver = new ResizeObserver(() => {
+        if (this.blockRain) {
+          this.blockRain.resize();
+          if (!this.blockRain.isRunning) {
+            this.blockRain.start();
+          }
+        }
+      });
+      this.resizeObserver.observe(container);
+
+      // Periodically refresh overlay stats (foundBlocks / chance)
+      this.statsInterval = setInterval(() => {
+        this.cdr.detectChanges();
+      }, 500);
+    });
+  }
+
+  private destroyCanvas(): void {
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+      this.statsInterval = null;
+    }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+    if (this.blockRain) {
+      this.blockRain.destroy();
+      this.blockRain = null;
+    }
+  }
+
+  get rainFoundBlocks(): number {
+    return this.blockRain?.foundBlocks ?? 0;
+  }
+
+  get rainChanceDisplay(): string {
+    if (!this.blockRain) return '∞';
+    const prob = this.blockRain.winProbability;
+    if (prob <= 0) return '∞';
+    return this.formatOddsNumber(Math.round(1 / prob));
   }
 
   formatOddsNumber(oddsOneIn: number): string {

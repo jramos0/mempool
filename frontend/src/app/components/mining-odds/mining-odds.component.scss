@@ -1,7 +1,7 @@
 .mode-toggle {
   display: inline-flex;
   background: var(--bg);
-  border: 1px solid var(--secondary);
+  border: 1px solid var(--stat-box-bg);
   border-radius: 8px;
   overflow: hidden;
 
@@ -9,43 +9,44 @@
     padding: 10px 24px;
     border: none;
     background: transparent;
-    color: inherit;
+    color: var(--fg);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
 
     &.active {
-      background: #1a3a4a;
-      color: #00ddff;
+      background: var(--active-bg);
+      color: var(--primary);
     }
 
     &:hover:not(.active) {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--hover-bg);
     }
   }
 }
 
 .stat-sub {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--tertiary);
   margin-top: 2px;
 }
 
 .input-group-text {
   background-color: var(--bg);
-  border-color: var(--secondary);
-  color: inherit;
+  border-color: var(--stat-box-bg);
+  color: var(--fg);
 }
 
 .network-stats-bar {
-  background: var(--bg);
-  border: 1px solid var(--secondary);
+  background: var(--stat-box-bg);
+  border: 1px solid var(--stat-box-bg);
   border-radius: 8px;
   padding: 16px 0;
-  max-width: 480px;
+  max-width: 720px;
   margin-left: auto;
   margin-right: auto;
+  align-items: center;
 }
 
 .stat-label {
@@ -53,34 +54,33 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 4px;
+  color: var(--tertiary);
 }
 
 .stat-value {
   font-size: 18px;
   font-weight: 500;
+  color: var(--fg);
 }
 
 .mining-odds-form {
-  width: 100%;
-  max-width: 420px;
-
-  .form-label {
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
   .unit-select {
     max-width: 110px;
     background-color: var(--bg);
-    border-color: var(--secondary);
-    color: inherit;
+    border-color: var(--stat-box-bg);
+    color: var(--fg);
+  }
+
+  .form-control {
+    max-width: 120px;
+    background-color: var(--block-side);
+    color: var(--fg);
   }
 }
 
 .stat-card {
   background: var(--bg);
-  border: 1px solid var(--secondary);
+  border: 1px solid var(--stat-box-bg);
   border-radius: 8px;
   padding: 20px 32px;
   min-width: 200px;
@@ -90,43 +90,112 @@
   font-size: 24px;
   font-weight: 600;
   margin-top: 4px;
+  color: var(--fg);
 }
 
 .accent-number {
-  color: #00ddff;
+  color: var(--primary);
 }
 
-.odds-table {
+// Block Rain Canvas
+.block-rain-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.block-rain-container {
+  position: relative;
   width: 100%;
-  text-align: center; 
-  th {
-    font-size: 13px;
+  height: 360px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--stat-box-bg);
+  background: var(--bg);
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.block-found-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+
+  &.active {
+    opacity: 1;
+  }
+
+  .block-found-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .block-found-text {
+    font-family: monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 0.08em;
+    text-shadow:
+      0 0 40px var(--green),
+      0 0 80px var(--green);
+  }
+
+  .block-found-sub {
+    font-size: 12px;
+    color: var(--green);
+    margin-top: 6px;
+  }
+}
+
+.rain-overlay-stats {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  pointer-events: none;
+  z-index: 1;
+
+  .rain-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .rain-stat-label {
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom-color: var(--secondary);
-    vertical-align: middle;
-    color: #ffffff; 
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.5);
   }
 
-  td {
-    vertical-align: middle;
-    border-color: rgba(128, 128, 128, 0.15);
-    color: #ffffff; 
+  .rain-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
 
-  .period-cell {
-    white-space: nowrap;
-    font-weight: 500;
-  }
-
-  .odds-good {
-    color: #4caf50; 
-  }
-
-  .odds-fair {
-    color: #ff9800; 
+    &--sm {
+      font-size: 20px;
+    }
   }
 }
-}
+
 
 @media (max-width: 767.98px) {
   .expected-time-value {
@@ -139,5 +208,27 @@
 
   .network-stats-bar {
     padding: 12px 0;
+  }
+
+  .block-rain-container {
+    height: 280px;
+  }
+
+  .block-found-overlay .block-found-text {
+    font-size: 22px;
+  }
+
+  .rain-overlay-stats {
+    gap: 32px;
+
+    .rain-stat-value {
+      font-size: 22px;
+    }
+  }
+}
+
+@media (max-width: 479.98px) {
+  .block-rain-container {
+    height: 220px;
   }
 }
