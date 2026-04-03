@@ -90,12 +90,14 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
     const currentRate = this.fastestFeeRate;
     const futureRate = this.futureFeeRate;
 
-    // Future is cheaper → green (good to wait), future is pricier → magenta (pay now)
-    const futureIsLower = futureRate < currentRate;
-    this.futureDotColor = futureIsLower ? '#00E5BF' : '#E23B6C';
-    const futureColor        = futureIsLower ? '#00E5BF' : '#E23B6C';
-    const futureBgRgba       = futureIsLower ? 'rgba(0,229,191,0.04)'  : 'rgba(226,59,108,0.04)';
-    const futureBorderRgba   = futureIsLower ? 'rgba(0,229,191,0.40)'  : 'rgba(226,59,108,0.40)';
+    // Future is always magenta. Now dot: orange if expensive (above futureRate), green if cheap.
+    const nowIsExpensive = currentRate > futureRate;
+    const nowColor           = nowIsExpensive ? '#f7931a' : '#3bdf7f';
+    const nowBorderRgba      = nowIsExpensive ? 'rgba(247,147,26,0.40)' : 'rgba(59,223,127,0.40)';
+    this.futureDotColor      = '#E23B6C';
+    const futureColor        = '#E23B6C';
+    const futureBgRgba       = 'rgba(226,59,108,0.04)';
+    const futureBorderRgba   = 'rgba(226,59,108,0.40)';
     // Threshold-exceeded fill: magenta when historical was above target (always means "it was expensive")
     const threshExcessColor  = 'rgba(226,59,108,0.12)';
 
@@ -144,9 +146,9 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
         dimension: 0,
         seriesIndex: 3,
         pieces: [
-          { min: firstTimestamp, max: oneThird, color: '#6C5CE7' },
-          { min: oneThird, max: twoThirds, color: '#A855F7' },
-          { min: twoThirds, max: now, color: '#00E5BF' },
+          { min: firstTimestamp, max: oneThird, color: '#f7931a' },
+          { min: oneThird, max: twoThirds, color: '#f9c74f' },
+          { min: twoThirds, max: now, color: '#3bdf7f' },
         ],
       }] as any,
 
@@ -278,9 +280,9 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           lineStyle: { width: 0, opacity: 0 },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-              { offset: 0, color: 'rgba(108,92,231,0.20)' },
-              { offset: 0.5, color: 'rgba(168,85,247,0.20)' },
-              { offset: 1, color: 'rgba(0,229,191,0.20)' },
+              { offset: 0,   color: 'rgba(247,147,26,0.20)' },
+              { offset: 0.5, color: 'rgba(249,199,79,0.20)' },
+              { offset: 1,   color: 'rgba(59,223,127,0.20)' },
             ]),
           },
           symbol: 'none',
@@ -305,7 +307,7 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
             silent: true,
             data: [
               [
-                { xAxis: firstTimestamp, itemStyle: { color: 'rgba(0,229,191,0.04)' } },
+                { xAxis: firstTimestamp, itemStyle: { color: 'rgba(59,223,127,0.04)' } },
                 { xAxis: now },
               ],
               [
@@ -371,7 +373,7 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           z: 4,
         } as any,
 
-        // ── 6. Current fee rate dot (cyan with glow ring) ───────────────────────
+        // ── 6. Current fee rate dot (orange if expensive, green if cheap) ─────────
         {
           name: 'nowDot',
           type: 'scatter',
@@ -380,8 +382,8 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           symbol: 'circle',
           symbolSize: 10,
           itemStyle: {
-            color: '#00E5BF',
-            borderColor: 'rgba(0,229,191,0.40)',
+            color: nowColor,
+            borderColor: nowBorderRgba,
             borderWidth: 8,
           },
           z: 10,
