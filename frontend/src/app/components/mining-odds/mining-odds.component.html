@@ -83,9 +83,9 @@
                 <span class="rain-stat-label">Found Blocks</span>
                 <span class="rain-stat-value">{{ rainFoundBlocks }}</span>
               </div>
-              <div class="rain-stat">
-                <span class="rain-stat-label">Chance</span>
-                <span class="rain-stat-value">1 in {{ rainChanceDisplay }}</span>
+              <div class="rain-stat" *ngIf="userHashrateIsSet">
+                <span class="rain-stat-label" i18n="mining-odds.chance-per-block">Chance</span>
+                <span class="rain-stat-value">1 in {{ rainChanceDisplay }} blocks</span>
               </div>
             </div>
             <div class="block-found-overlay" [class.active]="showBlockFound">
@@ -100,6 +100,16 @@
               <input type="checkbox" [checked]="realisticMode" (change)="onRealisticModeToggle()">
               <span i18n="mining-odds.realistic-time">Realistic time</span>
             </label>
+          </div>
+          <div class="rain-legend">
+            <span class="rain-legend-item">
+              <span class="rain-legend-dot rain-legend-dot--network"></span>
+              <span i18n="mining-odds.legend-network">= 10 EH/s network hashrate</span>
+            </span>
+            <span class="rain-legend-item">
+              <span class="rain-legend-dot rain-legend-dot--user"></span>
+              <span i18n="mining-odds.legend-user">Your hashes</span>
+            </span>
           </div>
         </div>
       </div>

@@ -72,9 +72,9 @@ export class BlockRainCanvas {
     blockGreen: '#83fd00',
     winner: '#6225b2',
     winnerGlow: '#6225b2',
-    networkMagenta: '#d946ef',
-    networkOrange: '#f97316',
-    networkRed: '#ef4444',
+    networkMagenta: '#9d7fa3',
+    networkOrange: '#a08870',
+    networkRed: '#9e7070',
   };
 
   onBlockFound = new EventEmitter<{ x: number; y: number; blockNumber: number }>();
@@ -88,6 +88,19 @@ export class BlockRainCanvas {
     this.ctx = canvas.getContext('2d')!;
     this.STEP = this.CELL_SIZE + this.GAP;
     this.readCSSColors();
+  }
+
+  /** Mixes a hex color toward grey by `amount` (0 = original, 1 = full grey). */
+  private greyMix(hex: string, amount: number): string {
+    if (!hex || hex[0] !== '#' || hex.length < 7) return hex;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const grey = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+    const mr = Math.round(r + (grey - r) * amount);
+    const mg = Math.round(g + (grey - g) * amount);
+    const mb = Math.round(b + (grey - b) * amount);
+    return `#${mr.toString(16).padStart(2, '0')}${mg.toString(16).padStart(2, '0')}${mb.toString(16).padStart(2, '0')}`;
   }
 
   private readCSSColors(): void {
@@ -115,9 +128,10 @@ export class BlockRainCanvas {
       this.c.winner     = tertiary;
       this.c.winnerGlow = tertiary;
     }
-    if (red)    this.c.networkRed     = red;
-    if (orange) this.c.networkOrange  = orange;
-    if (pink)   this.c.networkMagenta = pink;
+    // Network colors desaturated ~65% toward grey so they stay recognisable but muted
+    if (red)    this.c.networkRed     = this.greyMix(red, 0.65);
+    if (orange) this.c.networkOrange  = this.greyMix(orange, 0.65);
+    if (pink)   this.c.networkMagenta = this.greyMix(pink, 0.65);
   }
 
   setHashrate(hashesPerSecond: number): void {
@@ -147,11 +161,16 @@ export class BlockRainCanvas {
 
   // --- Spawn rates (circles/frame) ---
 
-  // Network density: always log-scaled — the background "ocean" of hashes, consistent in both modes
+  // Network density: each circle represents 5 EH/s of the total network hashrate.
+  // Spawn rate keeps a steady-state count of (networkHashrate / 5 EH) circles on screen.
   private get networkCirclesPerFrame(): number {
     if (this.networkHashrateHs <= 0) return 0;
-    const log = Math.log10(Math.max(this.networkHashrateHs, 1));
-    return Math.max((log * 4.5) / 60, 0);
+    const circlesTotal = this.networkHashrateHs / 10e18; 
+    if (circlesTotal <= 0) return 0;
+    const h = this.canvas.height / (window.devicePixelRatio || 1);
+    const avgSpeed = this.BASE_SPEED + this.speedVariance / 2;
+    const framesOnScreen = h / avgSpeed;
+    return Math.max(circlesTotal / framesOnScreen, 0);
   }
 
   // User stars: always log-scaled for visual density consistency across both modes.
@@ -160,6 +179,19 @@ export class BlockRainCanvas {
     if (this.userHashrateHs <= 0) return 0;
     const log = Math.log10(Math.max(this.userHashrateHs, 1));
     return Math.max((log * 1.2) / 60, 0);
+  }
+
+  // User circle size multiplier based on hashrate unit.
+  // GH/s is the default (1×); smaller units shrink, larger units grow.
+  private get userSizeMultiplier(): number {
+    const hs = this.userHashrateHs;
+    if (hs <= 0) return 1;
+    if (hs < 1e6) return 1 / 3;   // KH/s
+    if (hs < 1e9) return 2 / 3;   // MH/s
+    if (hs < 1e12) return 1;      // GH/s (default)
+    if (hs < 1e15) return 1.5;    // TH/s
+    if (hs < 1e18) return 2;      // PH/s
+    return 3;                      // EH/s
   }
 
   // --- Block makers ---
@@ -194,8 +226,6 @@ export class BlockRainCanvas {
     let color: string;
     if (isWinner) {
       color = this.c.winner;
-    } else if (Math.random() < 0.5) {
-      color = this.c.blockBlue;
     } else {
       color = this.c.blockGreen;
     }
@@ -422,7 +452,7 @@ export class BlockRainCanvas {
 
   private drawNetworkCircle(block: RainBlock): void {
     const ctx = this.ctx;
-    const r = this.CELL_SIZE / 2;
+    const r = this.CELL_SIZE * 2; // 4× default size — fixed for all network circles
     const cx = block.x + r;
     const cy = block.y + r;
     ctx.globalAlpha = block.opacity;
@@ -456,7 +486,7 @@ export class BlockRainCanvas {
 
     // Non-winner user hashes: plain circle in user colors (blue/green)
     const ctx = this.ctx;
-    const r = this.CELL_SIZE / 2;
+    const r = (this.CELL_SIZE / 2) * this.userSizeMultiplier;
     const cx = block.x + r;
     const cy = block.y + r;
     ctx.globalAlpha = block.opacity;
@@ -473,11 +503,11 @@ export class BlockRainCanvas {
     const pulse = 0.6 + 0.4 * Math.sin(block.flash);
     block.flash += 0.12;
 
-    const r = this.CELL_SIZE / 2;
+    const r = (this.CELL_SIZE / 2) * this.userSizeMultiplier;
     const cx = x + r;
     const cy = y + r;
-    const outerR = r * 2.5;   // 2× bigger than before
-    const innerR = r * 0.55;
+    const outerR = r * 1.7;
+    const innerR = r * 0.4;
 
     // Trail with glow
     for (let t = 0; t < block.trail.length; t++) {

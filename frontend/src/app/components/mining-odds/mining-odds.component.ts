@@ -53,7 +53,7 @@ export class MiningOddsComponent implements OnInit, OnDestroy {
   units = HASHRATE_UNITS;
   miningMode: MiningMode = 'solo';
   showBlockFound = false;
-  realisticMode = false;
+  realisticMode = true;
   networkHashrateHs = 0;
 
   networkStats$: Observable<{ hashrate: number; timeAvg: number; difficulty: number }>;
@@ -256,6 +256,7 @@ export class MiningOddsComponent implements OnInit, OnDestroy {
     // Create canvas instance — resize() is NOT called in constructor,
     // ResizeObserver fires immediately with the real container dimensions.
     this.blockRain = new BlockRainCanvas(canvas);
+    this.blockRain.setRealisticMode(this.realisticMode);
 
     this.subscriptions.add(
       this.blockRain.onBlockFound.subscribe(() => {
@@ -324,6 +325,13 @@ export class MiningOddsComponent implements OnInit, OnDestroy {
 
   get rainFoundBlocks(): number {
     return this.blockRain?.foundBlocks ?? 0;
+  }
+
+  get userHashrateIsSet(): boolean {
+    const formVal = this.form?.value;
+    if (!formVal) return false;
+    const unitMultiplier = HASHRATE_UNITS[formVal.unit]?.multiplier ?? 1e12;
+    return parseFloat(formVal.hashrate) * unitMultiplier > 0;
   }
 
   get rainChanceDisplay(): string {
