@@ -6,8 +6,11 @@ import { map, startWith, tap, take } from 'rxjs/operators';
 import { StateService } from '@app/services/state.service';
 import { WebsocketService } from '@app/services/websocket.service';
 import { ThemeService } from '@app/services/theme.service';
+import { ElectrsApiService } from '@app/services/electrs-api.service';
 import { Recommendedfees } from '@app/interfaces/websocket.interface';
+import { Utxo } from '@interfaces/electrs.interface';
 import { feeLevels } from '@app/app.constants';
+import { detectAddressType } from '@app/shared/address-utils';
 
 const INPUT_SIZES: Record<string, number> = {
   p2wpkh: 68,
@@ -92,6 +95,7 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
     private themeService: ThemeService,
     private cd: ChangeDetectorRef,
     private route: ActivatedRoute,
+    private electrsApiService: ElectrsApiService,
   ) {}
 
   ngOnInit(): void {
@@ -108,6 +112,24 @@ export class UtxoSpendingComponent implements OnInit, OnDestroy {
     this.route.queryParamMap.pipe(take(1)).subscribe(params => {
       const utxos = params.get('utxos');
       const type = params.get('type');
+      const address = params.get('address');
+
+      if (address) {
+        const network = this.stateService.network || 'mainnet';
+        const addrType = detectAddressType(address, network);
+        const canonical = TYPE_ALIASES[addrType];
+
+        this.electrsApiService.getAddressUtxos$(address).pipe(take(1)).subscribe((utxoList: Utxo[]) => {
+          const patch: Record<string, any> = { numInputs: utxoList.length || 1 };
+          if (canonical) {
+            patch['inputType'] = canonical;
+          }
+          this.form.patchValue(patch);
+          this.cd.markForCheck();
+        });
+        return;
+      }
+
       if (utxos) {
         const count = parseInt(utxos, 10);
         if (!isNaN(count) && count >= 1) {
