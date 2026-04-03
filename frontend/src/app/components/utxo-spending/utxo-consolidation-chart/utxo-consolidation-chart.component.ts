@@ -62,12 +62,29 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
 
   private buildChart(): void {
     const now = Date.now();
-    const pastWindow  = 3 * 30 * 24 * 60 * 60 * 1000;
+    const pastWindow  = 6 * 30 * 24 * 60 * 60 * 1000;
     const futureWindow = 14 * 24 * 60 * 60 * 1000;
     const firstTimestamp = now - pastWindow;
     const futureTime = now + futureWindow;
 
     const visibleData = this.historicalData.filter(d => d.timestamp >= firstTimestamp);
+
+    // ── Aggregate to weekly medians for a smoother line ────────────────────────
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const weeklyBuckets = new Map<number, number[]>();
+    for (const d of visibleData) {
+      const bucket = Math.floor(d.timestamp / weekMs) * weekMs;
+      if (!weeklyBuckets.has(bucket)) weeklyBuckets.set(bucket, []);
+      weeklyBuckets.get(bucket)!.push(d.median);
+    }
+    const weeklyData: { timestamp: number; median: number }[] = [];
+    for (const [bucket, values] of weeklyBuckets) {
+      values.sort((a, b) => a - b);
+      const mid = Math.floor(values.length / 2);
+      const median = values.length % 2 !== 0 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
+      weeklyData.push({ timestamp: bucket + weekMs / 2, median });
+    }
+    weeklyData.sort((a, b) => a.timestamp - b.timestamp);
 
     const txSize = this.txSize;
     const currentRate = this.fastestFeeRate;
@@ -77,42 +94,61 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
     const futureIsLower = futureRate < currentRate;
     this.futureDotColor = futureIsLower ? '#00E5BF' : '#E23B6C';
     const futureColor        = futureIsLower ? '#00E5BF' : '#E23B6C';
-    const futureAreaRgba     = futureIsLower ? 'rgba(0,229,191,0.15)'  : 'rgba(226,59,108,0.15)';
     const futureBgRgba       = futureIsLower ? 'rgba(0,229,191,0.04)'  : 'rgba(226,59,108,0.04)';
     const futureBorderRgba   = futureIsLower ? 'rgba(0,229,191,0.40)'  : 'rgba(226,59,108,0.40)';
     // Threshold-exceeded fill: magenta when historical was above target (always means "it was expensive")
     const threshExcessColor  = 'rgba(226,59,108,0.12)';
 
-    // ── Past data series ───────────────────────────────────────────────────────
-    const pastData: [number, number][] = visibleData.map(d => [d.timestamp, d.median]);
-    // Bridge: extend historical line to "now" at currentRate so it meets the future line
+    // ── Past data series (capped at now, extended to now with currentRate) ──────
+    const cappedWeekly = weeklyData.filter(d => d.timestamp <= now);
+    const pastData: [number, number][] = cappedWeekly.map(d => [d.timestamp, d.median]);
     pastData.push([now, currentRate]);
-    const threshBase: [number, number][] = visibleData.map(d => [d.timestamp, Math.max(0, futureRate)]);
-    const threshExcess: [number, number][] = visibleData.map(d => [
+    const threshBase: [number, number][] = cappedWeekly.map(d => [d.timestamp, Math.max(0, futureRate)]);
+    threshBase.push([now, Math.max(0, futureRate)]);
+    const threshExcess: [number, number][] = cappedWeekly.map(d => [
       d.timestamp,
       Math.max(0, d.median - futureRate),
     ]);
+    threshExcess.push([now, Math.max(0, currentRate - futureRate)]);
 
-    // ── Future projection (linear from currentRate → futureRate) ───────────────
-    const futureSteps = 60;
-    const futureData: [number, number][] = Array.from({ length: futureSteps + 1 }, (_, i) => {
-      const t = now + (i / futureSteps) * futureWindow;
-      const rate = currentRate + (i / futureSteps) * (futureRate - currentRate);
-      return [t, Math.max(0, rate)];
-    });
+    // ── Connection line: Now dot → Future dot ─────────────────────────────────
+    const connectionData: [number, number][] = [
+      [now, currentRate],
+      [futureTime, futureRate],
+    ];
 
     // ── Y axis range ───────────────────────────────────────────────────────────
-    const maxHistorical = visibleData.length > 0
-      ? Math.max(...visibleData.map(d => d.median))
+    const maxHistorical = weeklyData.length > 0
+      ? Math.max(...weeklyData.map(d => d.median))
       : futureRate;
-    const yMax = Math.ceil(Math.max(maxHistorical, futureRate, currentRate) * 1.15);
+    const yMaxRaw = Math.max(maxHistorical, futureRate, currentRate) * 1.15;
+    const yInterval = Math.ceil(yMaxRaw / 5) || 1;
+    const yMax = yInterval * 5;
 
-    const nowCost    = Math.round(currentRate * txSize);
-    const futureCost = Math.round(futureRate * txSize);
+    // Match the formulas from utxo-spending.component.ts
+    const nowCost    = Math.ceil(txSize * currentRate);
+    const futureCost = futureRate > 0
+      ? Math.ceil(this.numInputs * this.inputSize * futureRate)
+      : 0;
+
+    // Stepped gradient breakpoints for past line color
+    const oneThird = firstTimestamp + pastWindow / 3;
+    const twoThirds = firstTimestamp + (pastWindow * 2) / 3;
 
     this.chartOptions = {
       animation: false,
       grid: { top: 30, right: 95, bottom: 36, left: 78 },
+      visualMap: [{
+        show: false,
+        type: 'piecewise',
+        dimension: 0,
+        seriesIndex: 3,
+        pieces: [
+          { min: firstTimestamp, max: oneThird, color: '#6C5CE7' },
+          { min: oneThird, max: twoThirds, color: '#A855F7' },
+          { min: twoThirds, max: now, color: '#00E5BF' },
+        ],
+      }] as any,
 
       xAxis: {
         type: 'time',
@@ -145,6 +181,7 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           nameGap: 52,
           min: 0,
           max: yMax,
+          interval: yInterval,
           position: 'left',
           axisLabel: {
             color: 'var(--transparent-fg)',
@@ -159,13 +196,16 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           type: 'value',
           name: 'cost (sats)',
           nameLocation: 'middle',
-          nameGap: 68,
+          nameGap: 55,
           min: 0,
           max: yMax * txSize,
+          interval: yInterval * txSize,
           position: 'right',
           axisLabel: {
             color: 'var(--transparent-fg)',
             fontSize: 11,
+            inside: false,
+            margin: 8,
             formatter: (val: number): string => {
               if (val >= 1_000_000) return (val / 1_000_000).toFixed(1) + 'M';
               if (val >= 1_000) return (val / 1_000).toFixed(0) + 'k';
@@ -188,12 +228,33 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           lineStyle: { color: 'rgba(255,255,255,0.3)', type: 'dashed' },
         },
         formatter: (params: any): string => {
-          if (!Array.isArray(params) || !params[0]) return '';
+          if (!Array.isArray(params) || !params.length) return '';
+
+          // Check for Now dot
+          const nowHit = params.find((p: any) => p.seriesName === 'nowDot');
+          if (nowHit) {
+            return [
+              `<div style="font-weight:600;margin-bottom:4px">Now</div>`,
+              `Fee rate: <b>${currentRate.toFixed(1)} sat/vB</b><br>`,
+              `Cost: <b>${nowCost.toLocaleString()} sats</b>`,
+            ].join('');
+          }
+
+          // Check for Future dot
+          const futureHit = params.find((p: any) => p.seriesName === 'futureDot');
+          if (futureHit) {
+            return [
+              `<div style="font-weight:600;margin-bottom:4px">Future scenario</div>`,
+              `Fee rate: <b>${futureRate.toFixed(1)} sat/vB</b><br>`,
+              `Cost: <b>${futureCost.toLocaleString()} sats</b>`,
+            ].join('');
+          }
+
+          // Historical data
           const ts: number = params[0].data?.[0];
           if (!ts || ts > now) return '';
           const rate: number =
-            params.find((p: any) => p.seriesName === 'medianLine')?.data?.[1] ??
-            params.find((p: any) => p.seriesName === 'futureLine')?.data?.[1] ?? 0;
+            params.find((p: any) => p.seriesName === 'feeRateLine')?.data?.[1] ?? 0;
           if (rate === 0) return '';
           const cost = Math.round(rate * txSize);
           const date = new Date(ts).toLocaleDateString(undefined, {
@@ -269,20 +330,14 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           z: 3,
         } as any,
 
-        // ── 4. Past median fee line (gradient purple → violet → cyan) ───────────
+        // ── 4. Historical fee rate line (past only) ────────────────────────────
+        //    Color is driven by visualMap pieces (purple → violet → cyan)
         {
-          name: 'medianLine',
+          name: 'feeRateLine',
           type: 'line',
           data: pastData,
           yAxisIndex: 0,
-          lineStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-              { offset: 0, color: '#6C5CE7' },
-              { offset: 0.5, color: '#A855F7' },
-              { offset: 1, color: '#00E5BF' },
-            ]),
-            width: 1.5,
-          },
+          lineStyle: { width: 1.5 },
           areaStyle: { color: 'transparent' },
           symbol: 'none',
           z: 4,
@@ -290,7 +345,6 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
             silent: true,
             symbol: 'none',
             data: [
-              // Horizontal threshold line at futureRate only
               {
                 yAxis: futureRate,
                 lineStyle: { color: 'rgba(255,255,255,0.45)', type: 'dashed', width: 1 },
@@ -306,37 +360,18 @@ export class UtxoConsolidationChartComponent implements OnInit, OnChanges, OnDes
           },
         } as any,
 
-        // ── 5. Future area fill — fading gradient for prediction-cone look ────────
+        // ── 5. Now → Future connection line ──────────────────────────────────────
         {
-          name: 'futureArea',
+          name: 'nowToFuture',
           type: 'line',
-          data: futureData,
+          data: connectionData,
           yAxisIndex: 0,
-          lineStyle: { width: 0, opacity: 0 },
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-              { offset: 0, color: futureAreaRgba.replace(/[\d.]+\)$/, '0.28)') },
-              { offset: 1, color: futureAreaRgba.replace(/[\d.]+\)$/, '0.04)') },
-            ]),
-          },
+          lineStyle: { width: 1.5, color: futureColor },
           symbol: 'none',
-          silent: true,
-          z: 5,
+          z: 4,
         } as any,
 
-        // ── 6. Future projection line (solid, continuous with historical) ─────────
-        {
-          name: 'futureLine',
-          type: 'line',
-          data: futureData,
-          yAxisIndex: 0,
-          lineStyle: { color: futureColor, width: 1.5, type: 'solid' },
-          areaStyle: { color: 'transparent' },
-          symbol: 'none',
-          z: 6,
-        } as any,
-
-        // ── 7. Current fee rate dot (cyan with glow ring) ───────────────────────
+        // ── 6. Current fee rate dot (cyan with glow ring) ───────────────────────
         {
           name: 'nowDot',
           type: 'scatter',
