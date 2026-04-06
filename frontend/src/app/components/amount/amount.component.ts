@@ -28,6 +28,7 @@ export class AmountComponent implements OnInit, OnDestroy {
   @Input() forceSats: boolean = false;
   @Input() ignoreViewMode: boolean = false;
   @Input() forceBlockConversion: boolean = false; // true = displays fiat price as 0 if blockConversion is undefined instead of falling back to conversions
+  @Input() unitStyle: any;
 
   constructor(
     private stateService: StateService,
