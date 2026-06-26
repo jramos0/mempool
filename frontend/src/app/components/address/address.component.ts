@@ -2,17 +2,17 @@ import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
 import { ActivatedRoute, ParamMap } from '@angular/router';
 import { ElectrsApiService } from '@app/services/electrs-api.service';
-import { switchMap, filter, catchError, map, tap } from 'rxjs/operators';
+import { switchMap, filter, catchError, map, tap, debounceTime } from 'rxjs/operators';
 import { Address, ChainStats, Transaction, Utxo, Vin } from '@interfaces/electrs.interface';
 import { WebsocketService } from '@app/services/websocket.service';
 import { StateService } from '@app/services/state.service';
 import { AudioService } from '@app/services/audio.service';
 import { ApiService } from '@app/services/api.service';
-import { of, merge, Subscription, Observable, forkJoin } from 'rxjs';
+import { of, merge, Subscription, Observable, forkJoin, Subject } from 'rxjs';
 import { SeoService } from '@app/services/seo.service';
 import { seoDescriptionNetwork } from '@app/shared/common.utils';
 import { AddressInformation } from '@interfaces/node-api.interface';
-import { AddressTypeInfo, observedInputVsize } from '@app/shared/address-utils';
+import { AddressTypeInfo, observedInputVsize, estimateInputVsize } from '@app/shared/address-utils';
 import { extractTapLeaves, fillTapTree, convertTextToBuffer, PsbtKeyValue } from '@app/shared/transaction.utils';
 
 class AddressStats implements ChainStats {
@@ -125,6 +125,14 @@ export class AddressComponent implements OnInit, OnDestroy {
   tapTreeIncomplete: boolean = false;
   taprootPsbtExpanded: boolean = false;
   showCostToSpend: boolean = false;
+  feeImpactEnabled: boolean = false;
+  feeImpactToggleLabel = $localize`:@@address.utxo-fee-impact:Fee impact`;
+  feeRateUserSet: boolean = false;
+  displayFeeRate: number | null = null; // immediate slider value, shown next to the slider
+  chartFeeRate: number | null = null; // debounced value fed to the bubble chart
+  private feeRateSlider$ = new Subject<number>();
+  recommendedFeesSubscription: Subscription;
+  feeRateSliderSubscription: Subscription;
   psbtForm: UntypedFormGroup;
   psbtError?: string;
   accelerationsSubscription: Subscription;
@@ -162,6 +170,20 @@ export class AddressComponent implements OnInit, OnDestroy {
     });
     this.websocketService.want(['blocks', 'mempool-blocks']);
     this.psbtForm = this.formBuilder.group({ psbt: [''], tapleaf: [''], taptree: [''], ikey: [''] });
+
+    // seed the fee-impact slider with the prevailing 30-min fee until the user overrides it
+    this.recommendedFeesSubscription = this.stateService.recommendedFees$.subscribe((fees) => {
+      if (!this.feeRateUserSet) {
+        this.displayFeeRate = fees.halfHourFee;
+        this.chartFeeRate = fees.halfHourFee;
+      }
+    });
+    // debounce slider drags so the chart re-renders at most every 40ms while the label stays live
+    this.feeRateSliderSubscription = this.feeRateSlider$
+      .pipe(debounceTime(40))
+      .subscribe((feeRate) => {
+        this.chartFeeRate = feeRate;
+      });
 
     this.onResize();
     this.fragmentSubscription = this.route.fragment.subscribe((fragment) => {
@@ -526,6 +548,20 @@ export class AddressComponent implements OnInit, OnDestroy {
     return this.chainStats.utxos + this.mempoolStats.utxos;
   }
 
+  // single per-address input vsize, reused verbatim by the cost-to-spend table and the bubble chart wedges
+  get addressInputVsize(): number | null {
+    if (!this.addressTypeInfo) {
+      return null;
+    }
+    return estimateInputVsize(this.addressTypeInfo, this.addressTypeInfo.observedInputVsize).vsize;
+  }
+
+  onFeeRateSliderChange(feeRate: number): void {
+    this.feeRateUserSet = true;
+    this.displayFeeRate = feeRate;
+    this.feeRateSlider$.next(feeRate);
+  }
+
   setBalancePeriod(period: 'all' | '1m'): boolean {
     this.balancePeriod = period;
     return false;
@@ -667,6 +703,8 @@ export class AddressComponent implements OnInit, OnDestroy {
     this.fragmentSubscription?.unsubscribe();
     this.networkChangeSubscription?.unsubscribe();
     this.accelerationsSubscription?.unsubscribe();
+    this.recommendedFeesSubscription?.unsubscribe();
+    this.feeRateSliderSubscription?.unsubscribe();
     this.websocketService.stopTrackAccelerations();
   }
 }

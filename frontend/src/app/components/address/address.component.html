@@ -124,12 +124,20 @@
     <ng-container *ngIf="(stateService.backend$ | async) === 'esplora' && address && utxos && utxos.length > 2">
       <br>
       <div class="title-tx">
-        <h2 class="text-start" i18n="address.unspent-outputs">Unspent Outputs</h2>
+        <h2 class="text-start float-start" i18n="address.unspent-outputs">Unspent Outputs</h2>
+        <div class="fee-impact-controls float-end">
+          <app-toggle [textRight]="feeImpactToggleLabel" [checked]="feeImpactEnabled" (toggleStatusChanged)="feeImpactEnabled = $event"></app-toggle>
+          <ng-container *ngIf="feeImpactEnabled">
+            <input #feeRateSlider type="range" class="fee-rate-slider" min="1" max="1000" step="1" [value]="displayFeeRate" (input)="onFeeRateSliderChange(feeRateSlider.valueAsNumber)">
+            <app-fee-rate [fee]="displayFeeRate"></app-fee-rate>
+          </ng-container>
+        </div>
+        <div class="clearfix"></div>
       </div>
       <div class="box">
         <div class="row">
           <div class="col-md">
-            <app-utxo-graph [utxos]="utxos" left="80" />
+            <app-utxo-graph [utxos]="utxos" left="80" [feeImpact]="feeImpactEnabled" [inputVsize]="addressInputVsize" [feeRate]="chartFeeRate" />
           </div>
         </div>
       </div>
