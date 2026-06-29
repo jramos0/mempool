@@ -5,18 +5,14 @@ import {
   OnChanges,
   OnInit,
 } from '@angular/core';
-import { BehaviorSubject, Observable, combineLatest, of } from 'rxjs';
-import { map, timeout, catchError, startWith } from 'rxjs/operators';
-import { StateService } from '@app/services/state.service';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import {
   AddressTypeInfo,
   TX_OVERHEAD_VSIZE,
   TYPICAL_OUTPUT_VSIZE,
   estimateInputVsize,
 } from '@app/shared/address-utils';
-
-// give up waiting for fees over the websocket after this long
-const FEE_TIMEOUT_MS = 10000;
 
 interface CostToSpend {
   feeRate: number;
@@ -39,22 +35,15 @@ export class CostToSpendComponent implements OnInit, OnChanges {
   @Input() addressTypeInfo: AddressTypeInfo;
   @Input() utxoCount: number;
   @Input() balance: number;
+  @Input() feeRate: number;
 
-  costToSpend$: Observable<CostToSpend | null | undefined>;
-  // Bridges @Input changes into the reactive pipeline so cost recalculates on live balance updates
+  costToSpend$: Observable<CostToSpend>;
+  // Bridges @Input changes (balance, feerate from the slider) into the reactive pipeline so cost recalculates live
   private inputs$ = new BehaviorSubject<void>(undefined);
 
-  constructor(private stateService: StateService) {}
-
   ngOnInit(): void {
-    this.costToSpend$ = combineLatest([
-      this.stateService.recommendedFees$,
-      this.inputs$,
-    ]).pipe(
-      map(([fees]) => this.calculate(fees.halfHourFee)),
-      timeout({ first: FEE_TIMEOUT_MS }), // fees never arrived (websocket failure)
-      catchError(() => of(null)), // null = unavailable; stream closes, but *ngIf recreates the component on navigation so the state can't persist across addresses
-      startWith(undefined),
+    this.costToSpend$ = this.inputs$.pipe(
+      map(() => this.calculate(this.feeRate)),
     );
   }
 

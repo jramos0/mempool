@@ -124,7 +124,6 @@ export class AddressComponent implements OnInit, OnDestroy {
   addressTypeInfo: null | AddressTypeInfo;
   tapTreeIncomplete: boolean = false;
   taprootPsbtExpanded: boolean = false;
-  showCostToSpend: boolean = false;
   feeImpactEnabled: boolean = false;
   feeImpactToggleLabel = $localize`:@@address.utxo-fee-impact:Fee impact`;
   feeRateUserSet: boolean = false;
