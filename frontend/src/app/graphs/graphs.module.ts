@@ -36,6 +36,7 @@ import { HashrateChartPoolsComponent } from '@components/hashrates-chart-pools/h
 import { BlockHealthGraphComponent } from '@components/block-health-graph/block-health-graph.component';
 import { AddressComponent } from '@components/address/address.component';
 import { CostToSpendComponent } from '@components/address/cost-to-spend/cost-to-spend.component';
+import { CoinMoonsComponent } from '@components/coin-moons/coin-moons.component';
 import { WalletComponent } from '@components/wallet/wallet.component';
 import { WalletPreviewComponent } from '@components/wallet/wallet-preview.component';
 import { AddressGraphComponent } from '@components/address-graph/address-graph.component';
@@ -56,6 +57,7 @@ import { CommonModule } from '@angular/common';
     MempoolBlockComponent,
     AddressComponent,
     CostToSpendComponent,
+    CoinMoonsComponent,
     WalletComponent,
     WalletPreviewComponent,
 
