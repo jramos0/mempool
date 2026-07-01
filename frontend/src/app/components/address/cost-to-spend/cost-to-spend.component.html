@@ -40,7 +40,7 @@
       </div>
       <div class="stat-items">
         <div class="item">
-          <div class="card-text green-color">
+          <div class="card-text">
             <app-amount [satoshis]="cost.minCost" [noFiat]="true"></app-amount>
             <span class="fiat"><app-fiat [value]="cost.minCost"></app-fiat></span>
           </div>
@@ -55,7 +55,7 @@
           </div>
         </div>
         <div class="item">
-          <div class="card-text red-color">
+          <div class="card-text">
             <app-amount [satoshis]="cost.maxCost" [noFiat]="true"></app-amount>
             <span class="fiat"><app-fiat [value]="cost.maxCost"></app-fiat></span>
           </div>
@@ -82,7 +82,7 @@
       </div>
       <div class="stat-items">
         <div class="item">
-          <div class="card-text green-color">
+          <div class="card-text">
             <app-amount [satoshis]="cost.maxEffectiveBalance" [noFiat]="true"></app-amount>
             <span class="fiat"><app-fiat [value]="cost.maxEffectiveBalance"></app-fiat></span>
           </div>
@@ -97,7 +97,7 @@
           </div>
         </div>
         <div class="item">
-          <div class="card-text red-color">
+          <div class="card-text">
             <app-amount [satoshis]="cost.minEffectiveBalance" [noFiat]="true"></app-amount>
             <span class="fiat"><app-fiat [value]="cost.minEffectiveBalance"></app-fiat></span>
           </div>

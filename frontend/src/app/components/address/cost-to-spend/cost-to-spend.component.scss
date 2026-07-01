@@ -67,8 +67,9 @@
   color: var(--transparent-fg);
 }
 
+// fiat amounts hidden for now; markup kept in the template for easy re-enable
 .fiat {
-  font-size: 13px;
+  display: none;
 }
 
 .estimate-marker {
