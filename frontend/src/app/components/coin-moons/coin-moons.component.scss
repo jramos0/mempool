@@ -1,5 +1,7 @@
 .coin-moons {
   text-align: center;
+  // hug the stats strip below rather than floating in empty space
+  margin-bottom: -0.25rem;
 }
 
 .moons-header {
@@ -23,15 +25,8 @@
   width: 100%;
   max-width: 320px;
   height: auto;
+  // no bottom margin: keep the moons close to the stats strip that follows
   margin: 0 auto;
-
-  .reference {
-    fill: none;
-    stroke: var(--transparent-fg);
-    stroke-width: 1.5;
-    stroke-dasharray: 4 4;
-    opacity: 0.5;
-  }
 
   .moon {
     // grow/shrink the moons smoothly as the slider feerate changes
@@ -54,7 +49,9 @@
 .moons-labels {
   display: flex;
   flex-direction: row;
-  margin-top: 0.5rem;
+  // match the svg width/centering so each column sits directly above its moon
+  max-width: 320px;
+  margin: 0 auto 0.25rem;
 
   .moon-col {
     flex: 1;
@@ -100,6 +97,10 @@
 
   .fiat {
     margin-left: 6px;
+  }
+  .tooltip-share {
+    font-weight: 500;
+    margin-bottom: 2px;
   }
   .tooltip-breakdown {
     font-size: 12px;

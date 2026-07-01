@@ -12,17 +12,34 @@
     </span>
   </div>
 
+  <!-- share value templates, reused by the fixed labels and the hover tooltip -->
+  <ng-template #keptShareTpl>{{ s.keptFrac * 100 | number: '1.0-1' }}%</ng-template>
+  <ng-template #feeShareTpl>
+    <!-- once uneconomical the share is pinned at 100%, so show the fee-to-value multiplier instead -->
+    <ng-container *ngIf="s.uneconomical; else feeEco">avg ×{{ s.mult | number: '1.0-1' }}</ng-container>
+    <ng-template #feeEco>
+      <ng-container *ngIf="s.takenFrac >= tinyShare; else feeTiny">{{ s.takenFrac * 100 | number: '1.0-1' }}%</ng-container>
+      <ng-template #feeTiny>≈0%</ng-template>
+    </ng-template>
+  </ng-template>
+
+  <!-- label + percentage sit directly above each moon, centred over its circle -->
+  <div class="moons-labels">
+    <div class="moon-col kept">
+      <div class="caption" i18n="address.coin-moons.kept|Kept moon label">You keep</div>
+    </div>
+    <div class="moon-col fee">
+      <div class="caption" i18n="address.coin-moons.fee|Fee moon label">Goes to fees</div>
+    </div>
+  </div>
+
   <svg class="moons-svg" viewBox="0 0 480 220" preserveAspectRatio="xMidYMid meet" role="img">
-    <title i18n="address.coin-moons.title|Coin moons figure title">Average coin split into kept value and fee</title>
     <desc>
       <ng-container i18n="address.coin-moons.desc|Coin moons figure description"
         >At this feerate the fee takes {{ s.takenFrac * 100 | number: '1.0-1' }}% of the average coin.</ng-container
       >
     </desc>
-    <!-- reference outlines = "the whole average coin"; the kept moon empties and the fee moon fills toward them -->
-    <circle class="reference" cx="120" cy="110" [attr.r]="rmax"></circle>
     <circle class="moon moon-kept" cx="120" cy="110" [attr.r]="s.rKept"></circle>
-    <circle class="reference" cx="360" cy="110" [attr.r]="rmax"></circle>
     <circle class="moon moon-fee" cx="360" cy="110" [attr.r]="feeRadius"></circle>
     <!-- transparent hit areas so the whole moon region is hoverable even when a moon is a tiny dot -->
     <circle
@@ -45,23 +62,7 @@
     ></circle>
   </svg>
 
-  <div class="moons-labels">
-    <div class="moon-col kept">
-      <div class="caption" i18n="address.coin-moons.kept|Kept moon label">You keep</div>
-      <div class="share">{{ s.keptFrac * 100 | number: '1.0-1' }}%</div>
-    </div>
-    <div class="moon-col fee">
-      <div class="caption" i18n="address.coin-moons.fee|Fee moon label">Goes to fees</div>
-      <!-- once uneconomical the share is pinned at 100%, so show the fee-to-value multiplier instead -->
-      <div class="share mult" *ngIf="s.uneconomical">avg ×{{ s.mult | number: '1.0-1' }}</div>
-      <div class="share" *ngIf="!s.uneconomical">
-        <ng-container *ngIf="s.takenFrac >= tinyShare; else tinyFee">{{ s.takenFrac * 100 | number: '1.0-1' }}%</ng-container>
-        <ng-template #tinyFee>≈0%</ng-template>
-      </div>
-    </div>
-  </div>
-
-  <!-- hover detail: the exact amount + fee breakdown moved off the always-visible view -->
+  <!-- hover detail: share + the exact amount + fee breakdown moved off the always-visible view -->
   <div
     #tooltip
     class="moons-tooltip"
@@ -70,6 +71,11 @@
     [style.left.px]="isMobile ? null : tooltipPosition.x"
     [style.top.px]="isMobile ? null : tooltipPosition.y"
   >
+    <div class="tooltip-share">
+      <ng-container [ngTemplateOutlet]="hoverTarget === 'kept' ? keptShareTpl : feeShareTpl"></ng-container>
+      <span *ngIf="hoverTarget === 'kept'" i18n="address.coin-moons.kept|Kept moon label">You keep</span>
+      <span *ngIf="hoverTarget === 'fee'" i18n="address.coin-moons.fee|Fee moon label">Goes to fees</span>
+    </div>
     <div class="tooltip-amount">
       <app-amount [satoshis]="hoverTarget === 'kept' ? s.kept : s.feePerInput" [noFiat]="true"></app-amount>
       <span class="fiat"><app-fiat [value]="hoverTarget === 'kept' ? s.kept : s.feePerInput"></app-fiat></span>
