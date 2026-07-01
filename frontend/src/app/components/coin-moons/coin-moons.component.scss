@@ -4,6 +4,11 @@
   margin-bottom: -0.25rem;
 }
 
+// fiat amounts hidden for now; markup kept in the template for easy re-enable
+.fiat {
+  display: none;
+}
+
 .moons-header {
   margin-bottom: 0.5rem;
   font-size: 15px;
