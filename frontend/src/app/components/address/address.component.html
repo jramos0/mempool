@@ -128,7 +128,7 @@
         <div class="fee-impact-controls float-end">
           <!-- the toggle drives the bubble wedges; >500 shows coin moons, which already are the fee-impact view -->
           <app-toggle *ngIf="utxos && utxos.length > 2" [textRight]="feeImpactToggleLabel" [checked]="feeImpactEnabled" (toggleStatusChanged)="feeImpactEnabled = $event"></app-toggle>
-          <input #feeRateSlider type="range" class="fee-rate-slider" min="1" max="500" step="1" [value]="displayFeeRate" (input)="onFeeRateSliderChange(feeRateSlider.valueAsNumber)">
+          <input #feeRateSlider type="range" class="fee-rate-slider" [min]="feeRateSliderMin" [max]="feeRateSliderMax" step="1" [value]="displayFeeRate" [style.--fill]="feeRateFillPercent" [disabled]="!feeImpactEnabled" (input)="onFeeRateSliderChange(feeRateSlider.valueAsNumber)">
           <app-fee-rate [fee]="displayFeeRate"></app-fee-rate>
         </div>
         <div class="clearfix"></div>

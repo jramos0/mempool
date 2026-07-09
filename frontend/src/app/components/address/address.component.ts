@@ -127,6 +127,8 @@ export class AddressComponent implements OnInit, OnDestroy {
   feeImpactEnabled: boolean = false;
   feeImpactToggleLabel = $localize`:@@address.utxo-fee-impact:Fee impact`;
   feeRateUserSet: boolean = false;
+  readonly feeRateSliderMin = 1;
+  readonly feeRateSliderMax = 500;
   displayFeeRate: number | null = null; // immediate slider value, shown next to the slider
   chartFeeRate: number | null = null; // debounced value fed to the bubble chart
   private feeRateSlider$ = new Subject<number>();
@@ -553,6 +555,13 @@ export class AddressComponent implements OnInit, OnDestroy {
       return null;
     }
     return estimateInputVsize(this.addressTypeInfo, this.addressTypeInfo.observedInputVsize).vsize;
+  }
+
+  // colored portion of the slider track, from the left up to the thumb
+  get feeRateFillPercent(): string {
+    const value = this.displayFeeRate ?? this.feeRateSliderMin;
+    const pct = ((value - this.feeRateSliderMin) / (this.feeRateSliderMax - this.feeRateSliderMin)) * 100;
+    return `${Math.max(0, Math.min(100, pct))}%`;
   }
 
   onFeeRateSliderChange(feeRate: number): void {
