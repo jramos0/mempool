@@ -40,6 +40,10 @@
       </div>
       <div class="stat-items">
         <div class="item">
+          <div class="fee-percent" [ngStyle]="{'color': cost.minFeeColor}">
+            <fa-icon class="retarget-sign" [icon]="['fas', 'caret-down']" [fixedWidth]="true"></fa-icon>
+            {{ cost.minFeePercent | number: '1.2-2' }} <span class="symbol">%</span>
+          </div>
           <div class="card-text">
             <app-amount [satoshis]="cost.minCost" [noFiat]="true"></app-amount>
             <span class="fiat"><app-fiat [value]="cost.minCost"></app-fiat></span>
@@ -55,6 +59,10 @@
           </div>
         </div>
         <div class="item">
+          <div class="fee-percent" [ngStyle]="{'color': cost.maxFeeColor}">
+            <fa-icon class="retarget-sign" [icon]="['fas', 'caret-down']" [fixedWidth]="true"></fa-icon>
+            {{ cost.maxFeePercent | number: '1.2-2' }} <span class="symbol">%</span>
+          </div>
           <div class="card-text">
             <app-amount [satoshis]="cost.maxCost" [noFiat]="true"></app-amount>
             <span class="fiat"><app-fiat [value]="cost.maxCost"></app-fiat></span>

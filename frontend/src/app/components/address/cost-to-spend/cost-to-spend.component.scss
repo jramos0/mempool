@@ -58,6 +58,19 @@
   margin-bottom: 0.2rem;
 }
 
+// share-of-fees topline above the amount, reusing difficulty's caret + percent styling
+.fee-percent {
+  font-size: 15px;
+  margin-bottom: 0.1rem;
+}
+
+.retarget-sign {
+  margin-right: -3px;
+  font-size: 14px;
+  top: -2px;
+  position: relative;
+}
+
 .symbol {
   font-size: 13px;
   white-space: nowrap;
