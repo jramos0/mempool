@@ -12,7 +12,7 @@ import { of, merge, Subscription, Observable, forkJoin, Subject } from 'rxjs';
 import { SeoService } from '@app/services/seo.service';
 import { seoDescriptionNetwork } from '@app/shared/common.utils';
 import { AddressInformation } from '@interfaces/node-api.interface';
-import { AddressTypeInfo, observedInputVsize, estimateInputVsize } from '@app/shared/address-utils';
+import { AddressTypeInfo, observedInputVsize, estimateInputVsize, UTXO_GRAPH_LIMIT } from '@app/shared/address-utils';
 import { extractTapLeaves, fillTapTree, convertTextToBuffer, PsbtKeyValue } from '@app/shared/transaction.utils';
 
 class AddressStats implements ChainStats {
@@ -272,11 +272,15 @@ export class AddressComponent implements OnInit, OnDestroy {
           this.isLoadingAddress = false;
           this.isLoadingTransactions = true;
           const utxoCount = this.chainStats.utxos + this.mempoolStats.utxos;
+          if (utxoCount > UTXO_GRAPH_LIMIT) {
+            // the aggregate average-coin view is primarily a fee-impact figure, so arm it by default
+            this.feeImpactEnabled = true;
+          }
           return forkJoin([
             address.is_pubkey
               ? this.electrsApiService.getScriptHashTransactions$((address.address.length === 66 ? '21' : '41') + address.address + 'ac')
               : this.electrsApiService.getAddressTransactions$(address.address),
-            (utxoCount > 2 && utxoCount <= 500 ? (address.is_pubkey
+            (utxoCount > 2 && utxoCount <= UTXO_GRAPH_LIMIT ? (address.is_pubkey
               ? this.electrsApiService.getScriptHashUtxos$((address.address.length === 66 ? '21' : '41') + address.address + 'ac')
               : this.electrsApiService.getAddressUtxos$(address.address)) : of(null)).pipe(
                 catchError(() => {
@@ -547,6 +551,21 @@ export class AddressComponent implements OnInit, OnDestroy {
 
   get spendableUtxoCount(): number {
     return this.chainStats.utxos + this.mempoolStats.utxos;
+  }
+
+  get showUtxoGraph(): boolean {
+    return !!this.utxos && this.utxos.length > 2;
+  }
+
+  // above UTXO_GRAPH_LIMIT individual utxos are never fetched, so the aggregate view takes
+  // over; !showUtxoGraph keeps the two mutually exclusive when live txs cross the limit
+  get showAverageCoin(): boolean {
+    return !this.showUtxoGraph && this.spendableUtxoCount > UTXO_GRAPH_LIMIT && this.showCostToSpend;
+  }
+
+  get showCostToSpend(): boolean {
+    return this.network !== 'liquid' && this.network !== 'liquidtestnet' && !this.address?.electrum
+      && !!this.addressTypeInfo && this.spendableUtxoCount > 0 && this.chartFeeRate !== null;
   }
 
   // single per-address input vsize, reused verbatim by the cost-to-spend table and the bubble chart wedges

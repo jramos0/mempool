@@ -510,9 +510,9 @@ export function checkedCompareAddressStrings(a: string, b: string, type: Address
   );
 }
 
-// reference radius of "the whole average coin" in viewBox units; fixed so coin-moons
-// across different addresses are comparable (they show proportions, not absolute size)
-export const COIN_MOON_RMAX = 100;
+// most UTXOs the address page fetches and draws individually; above this the aggregate
+// average-coin view takes over (the fetch gate and the render gates must agree on it)
+export const UTXO_GRAPH_LIMIT = 500;
 
 export interface AverageCoinSplit {
   mean: number;          // average coin value (sats)
@@ -523,23 +523,19 @@ export interface AverageCoinSplit {
   fStar: number;         // break-even feerate (sat/vB) where fee equals the average coin
   mult: number;          // fee-to-value multiplier (feePerInput / mean); > 1 once uneconomical
   uneconomical: boolean; // the fee costs at least as much as the average coin is worth (≥ f*)
-  rKept: number;         // radius of the kept moon
-  rFee: number;          // radius of the fee moon
 }
 
 /**
  * Splits the average coin (balance / utxoCount) into the value it keeps vs the value the
- * fee takes at a given feerate, for the >500-UTXO "coin moons" view. Pure, aggregate-only.
- *
- * Areas are conservative: when economical, rKept² + rFee² === rmax² (the two moons fill the
- * whole reference coin). Returns null for unusable aggregates so the caller renders nothing.
+ * fee takes at a given feerate, for the aggregate "average coin" view shown when individual
+ * UTXOs are not fetched. Pure, aggregate-only.
+ * Returns null for unusable aggregates so the caller renders nothing.
  */
 export function averageCoinSplit(
   balanceSats: number,
   utxoCount: number,
   vsizePerInput: number,
   feerate: number,
-  rmax: number = COIN_MOON_RMAX,
 ): AverageCoinSplit | null {
   // guard unusable aggregates (incl. div-by-zero and non-finite feerate) → no render, never NaN
   if (!(utxoCount > 0) || !(vsizePerInput > 0) || !(balanceSats > 0) || !Number.isFinite(feerate)) {
@@ -555,12 +551,8 @@ export function averageCoinSplit(
   const takenFrac = Math.min(1, feePerInput / mean);
   const fStar = mean / vsizePerInput;
   const mult = feePerInput / mean;
-  // ≥ so the exact break-even (fee eats the whole coin, kept=0) is one source of truth
-  // shared by the drawing (rFee=rmax) and the state
+  // ≥ so the exact break-even (fee eats the whole coin, kept=0) counts as uneconomical
   const uneconomical = feePerInput >= mean;
-  // area ∝ value → radius ∝ √fraction; the fee moon fills the whole reference coin once uneconomical
-  const rKept = rmax * Math.sqrt(keptFrac);
-  const rFee = uneconomical ? rmax : rmax * Math.sqrt(takenFrac);
-  return { mean, feePerInput, kept, keptFrac, takenFrac, fStar, mult, uneconomical, rKept, rFee };
+  return { mean, feePerInput, kept, keptFrac, takenFrac, fStar, mult, uneconomical };
 }
 

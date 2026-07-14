@@ -11,6 +11,11 @@ import { TimeService } from '@app/services/time.service';
 import { WebsocketService } from '@app/services/websocket.service';
 import { Acceleration } from '@interfaces/node-api.interface';
 import { defaultAuditColors } from '@components/block-overview-graph/utils';
+import { UTXO_GRAPH_LIMIT } from '@app/shared/address-utils';
+
+// fee-wedge styling shared with the aggregate average-coin view so both regimes render identically
+export const FEE_WEDGE_OPACITY = 0.8;
+export const FEE_WEDGE_OPACITY_UNECONOMICAL = 0.9;
 
 const newColorHex = '1BF4AF';
 const oldColorHex = '3C39F4';
@@ -167,7 +172,7 @@ export class UtxoGraphComponent implements OnChanges, OnDestroy {
     // ~Linear algorithm to pack circles as tightly as possible without overlaps
     const placedCircles: UtxoCircle[] = [];
     const positions: { c1: Circle, c2: Circle, d: number, p: number, side?: boolean }[] = [];
-    // Pack in descending order of value, and limit to the top 500 to preserve performance
+    // Pack in descending order of value, and cap the circle count to preserve performance
     const sortedUtxos = utxos.sort((a, b) => {
       if (a.value === b.value) {
         if (a.status.confirmed && !b.status.confirmed) {
@@ -179,7 +184,7 @@ export class UtxoGraphComponent implements OnChanges, OnDestroy {
         }
       }
       return b.value - a.value;
-    }).slice(0, 500);
+    }).slice(0, UTXO_GRAPH_LIMIT);
     const maxR = Math.sqrt(sortedUtxos.reduce((max, utxo) => Math.max(max, utxo.value), 0));
     sortedUtxos.forEach((utxo, index) => {
       // area proportional to value
@@ -352,7 +357,7 @@ export class UtxoGraphComponent implements OnChanges, OnDestroy {
               },
               style: {
                 fill: this.feeWedgeColor,
-                opacity: uneconomical ? 0.9 : 0.8,
+                opacity: uneconomical ? FEE_WEDGE_OPACITY_UNECONOMICAL : FEE_WEDGE_OPACITY,
               },
             });
           }
