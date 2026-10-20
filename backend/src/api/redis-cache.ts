@@ -13,6 +13,8 @@ enum NetworkDB {
   signet,
   liquid,
   liquidtestnet,
+  testnet4,
+  regtest,
 }
 
 class RedisCache {
