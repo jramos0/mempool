@@ -125,10 +125,10 @@ export function calcDifficultyAdjustment(
     difficultyChange = -75;
   }
 
-  // Testnet difficulty is set to 1 after 20 minutes of no blocks,
+  // Testnet and testnet4 difficulty is set to 1 after 20 minutes of no blocks,
   // therefore the time between blocks will always be below 20 minutes (1200s).
   let timeOffset = 0;
-  if (network === 'testnet') {
+  if (network === 'testnet' || network === 'testnet4') {
     if (timeAvgSecs > TESTNET_MAX_BLOCK_SECONDS) {
       timeAvgSecs = TESTNET_MAX_BLOCK_SECONDS;
     }
